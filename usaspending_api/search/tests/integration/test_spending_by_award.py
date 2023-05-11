@@ -2,7 +2,7 @@ import json
 import pytest
 
 from datetime import datetime
-from model_mommy import mommy
+from model_bakery import baker
 from rest_framework import status
 from usaspending_api.awards.v2.lookups.lookups import all_award_types_mappings
 from usaspending_api.search.tests.data.search_filters_test_data import non_legacy_filters, legacy_filters
@@ -100,9 +100,8 @@ def test_spending_by_award_legacy_filters(client, monkeypatch, elasticsearch_awa
 @pytest.mark.django_db
 def test_no_intersection(client, monkeypatch, elasticsearch_award_index):
 
-    mommy.make("awards.Award", id=1, type="A", latest_transaction_id=1)
-    mommy.make("awards.TransactionNormalized", id=1, action_date="2010-10-01", award_id=1, is_fpds=True)
-    mommy.make("awards.TransactionFPDS", transaction_id=1)
+    baker.make("search.AwardSearch", award_id=1, type="A", latest_transaction_id=1, action_date="2020-10-10")
+    baker.make("search.TransactionSearch", transaction_id=1, action_date="2010-10-01", award_id=1, is_fpds=True)
 
     setup_elasticsearch_test(monkeypatch, elasticsearch_award_index)
 
@@ -161,20 +160,29 @@ def awards_over_different_date_ranges():
             guai = "AWARD_{}".format(award_id)
             award_type_list = all_award_types_mappings[award_category]
             award_type = award_type_list[award_id % len(award_type_list)]
-            award = mommy.make(
-                "awards.Award",
-                id=award_id,
+            if award_category in ("contracts", "idvs"):
+                display_award_id = "abcdefg{}".format(award_id)
+            else:
+                display_award_id = "xyz{}".format(award_id)
+            award = baker.make(
+                "search.AwardSearch",
+                award_id=award_id,
                 generated_unique_award_id=guai,
                 type=award_type,
                 category=award_category,
                 latest_transaction_id=1000 + award_id,
                 date_signed=date_range["date_signed"],
+                display_award_id=display_award_id,
                 piid="abcdefg{}".format(award_id),
                 fain="xyz{}".format(award_id),
                 uri="abcxyx{}".format(award_id),
+                action_date=date_range["action_date"],
             )
-            mommy.make(
-                "awards.TransactionNormalized", id=1000 + award_id, award=award, action_date=date_range["action_date"]
+            baker.make(
+                "search.TransactionSearch",
+                transaction_id=1000 + award_id,
+                award=award,
+                action_date=date_range["action_date"],
             )
 
 
@@ -367,6 +375,53 @@ def test_date_range_search_with_two_ranges(
 
 
 @pytest.mark.django_db
+def test_date_range_with_date_signed(client, monkeypatch, elasticsearch_award_index, awards_over_different_date_ranges):
+    setup_elasticsearch_test(monkeypatch, elasticsearch_award_index)
+
+    contract_type_list = all_award_types_mappings["contracts"]
+
+    request_for_2015 = {
+        "subawards": False,
+        "fields": ["Award ID"],
+        "sort": "Award ID",
+        "limit": 50,
+        "page": 1,
+        "filters": {
+            "time_period": [
+                {"start_date": "2015-01-01", "end_date": "2015-12-31", "date_type": "date_signed"},
+            ],
+            "award_type_codes": contract_type_list,
+        },
+    }
+
+    resp = client.post(
+        "/api/v2/search/spending_by_award/", content_type="application/json", data=json.dumps(request_for_2015)
+    )
+    assert resp.status_code == status.HTTP_200_OK
+    assert len(resp.data["results"]) == 5
+
+    request_for_2016 = {
+        "subawards": False,
+        "fields": ["Award ID"],
+        "sort": "Award ID",
+        "limit": 50,
+        "page": 1,
+        "filters": {
+            "time_period": [
+                {"start_date": "2016-01-01", "end_date": "2016-12-31", "date_type": "date_signed"},
+            ],
+            "award_type_codes": contract_type_list,
+        },
+    }
+
+    resp = client.post(
+        "/api/v2/search/spending_by_award/", content_type="application/json", data=json.dumps(request_for_2016)
+    )
+    assert resp.status_code == status.HTTP_200_OK
+    assert len(resp.data["results"]) == 2
+
+
+@pytest.mark.django_db
 def test_success_with_all_filters(client, monkeypatch, elasticsearch_award_index):
     """
     General test to make sure that all groups respond with a Status Code of 200 regardless of the filters.
@@ -457,21 +512,30 @@ def test_mixed_naics_codes(client, monkeypatch, spending_by_award_test_data, ela
     Verify use of built query_string boolean logic for NAICS code inclusions/exclusions executes as expected on ES
     """
 
-    mommy.make(
-        "awards.Award",
-        id=5,
+    baker.make(
+        "search.AwardSearch",
+        award_id=5,
         type="A",
         category="contract",
         fain="abc444",
         earliest_transaction_id=8,
         latest_transaction_id=8,
-        generated_unique_award_id="ASST_NON_TESTING_4",
+        generated_unique_award_id="ASST_NON_TESTING_5",
         date_signed="2019-01-01",
         total_obligation=12.00,
+        naics_code="222233",
+        action_date="2019-01-01",
     )
 
-    mommy.make("awards.TransactionNormalized", id=8, award_id=5, action_date="2019-10-1", is_fpds=True)
-    mommy.make("awards.TransactionFPDS", transaction_id=8, naics="222233", awardee_or_recipient_uniqu="duns_1001")
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=8,
+        award_id=5,
+        action_date="2019-10-1",
+        is_fpds=True,
+        naics_code="222233",
+        recipient_unique_id="duns_1001",
+    )
 
     setup_elasticsearch_test(monkeypatch, elasticsearch_award_index)
 
@@ -494,7 +558,7 @@ def test_mixed_naics_codes(client, monkeypatch, spending_by_award_test_data, ela
             }
         ),
     )
-    expected_result = [{"internal_id": 5, "Award ID": None, "generated_internal_id": "ASST_NON_TESTING_4"}]
+    expected_result = [{"internal_id": 5, "Award ID": None, "generated_internal_id": "ASST_NON_TESTING_5"}]
     assert resp.status_code == status.HTTP_200_OK
     assert len(resp.json().get("results")) == 1
     assert resp.json().get("results") == expected_result, "Keyword filter does not match expected result"

@@ -3,7 +3,7 @@ import datetime
 import pytest
 
 from django.core.management import call_command
-from model_mommy import mommy
+from model_bakery import baker
 
 from usaspending_api.awards.models import Award, TransactionFPDS, TransactionNormalized
 from usaspending_api.broker.models import ExternalDataLoadDate, ExternalDataType
@@ -13,6 +13,7 @@ from usaspending_api.etl.transaction_loaders.field_mappings_fpds import (
     transaction_fpds_nonboolean_columns,
     transaction_normalized_nonboolean_columns,
 )
+from usaspending_api.search.models import AwardSearch
 from usaspending_api.transactions.models import SourceProcurementTransaction
 
 
@@ -58,10 +59,11 @@ def _assemble_source_procurement_records(id_list):
             dummy_row["action_date"], "%Y-%m-%d %H:%M:%S"
         ) + datetime.timedelta(days=dummy_row["detached_award_procurement_id"])
 
-        mommy.make("transactions.SourceProcurementTransaction", **dummy_row)
+        baker.make("transactions.SourceProcurementTransaction", **dummy_row)
 
 
 @pytest.mark.django_db
+@pytest.mark.skip(reason="Test based on pre-databricks loader code. Remove when fully cut over.")
 def test_load_source_procurement_by_ids():
     """
     Simple end-to-end integration test to exercise the fpds loader given 3 records in an actual broker database
@@ -120,29 +122,30 @@ def test_load_source_procurement_by_ids():
 
 
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.skip(reason="Test based on pre-databricks loader code. Remove when fully cut over.")
 def test_delete_fpds_success(monkeypatch):
     # Award/Transaction deleted based on 1-1 transaction
-    mommy.make(Award, id=1, generated_unique_award_id="TEST_AWARD_1")
-    mommy.make(TransactionNormalized, id=1, award_id=1, unique_award_key="TEST_AWARD_1")
-    mommy.make(TransactionFPDS, transaction_id=1, detached_award_procurement_id=301, unique_award_key="TEST_AWARD_1")
+    baker.make(AwardSearch, award_id=1, generated_unique_award_id="TEST_AWARD_1")
+    baker.make(TransactionNormalized, id=1, award_id=1, unique_award_key="TEST_AWARD_1")
+    baker.make(TransactionFPDS, transaction_id=1, detached_award_procurement_id=301, unique_award_key="TEST_AWARD_1")
 
     # Award kept despite having one of their associated transactions removed
-    mommy.make(Award, id=2, generated_unique_award_id="TEST_AWARD_2")
-    mommy.make(TransactionNormalized, id=2, award_id=2, action_date="2019-01-01", unique_award_key="TEST_AWARD_2")
-    mommy.make(TransactionNormalized, id=3, award_id=2, action_date="2019-01-02", unique_award_key="TEST_AWARD_2")
-    mommy.make(TransactionFPDS, transaction_id=2, detached_award_procurement_id=302, unique_award_key="TEST_AWARD_2")
-    mommy.make(TransactionFPDS, transaction_id=3, detached_award_procurement_id=303, unique_award_key="TEST_AWARD_2")
+    baker.make(AwardSearch, award_id=2, generated_unique_award_id="TEST_AWARD_2")
+    baker.make(TransactionNormalized, id=2, award_id=2, action_date="2019-01-01", unique_award_key="TEST_AWARD_2")
+    baker.make(TransactionNormalized, id=3, award_id=2, action_date="2019-01-02", unique_award_key="TEST_AWARD_2")
+    baker.make(TransactionFPDS, transaction_id=2, detached_award_procurement_id=302, unique_award_key="TEST_AWARD_2")
+    baker.make(TransactionFPDS, transaction_id=3, detached_award_procurement_id=303, unique_award_key="TEST_AWARD_2")
 
     # Award/Transaction untouched at all as control
-    mommy.make(Award, id=3, generated_unique_award_id="TEST_AWARD_3")
-    mommy.make(TransactionNormalized, id=4, award_id=3, unique_award_key="TEST_AWARD_3")
-    mommy.make(TransactionFPDS, transaction_id=4, detached_award_procurement_id=304, unique_award_key="TEST_AWARD_3")
+    baker.make(AwardSearch, award_id=3, generated_unique_award_id="TEST_AWARD_3")
+    baker.make(TransactionNormalized, id=4, award_id=3, unique_award_key="TEST_AWARD_3")
+    baker.make(TransactionFPDS, transaction_id=4, detached_award_procurement_id=304, unique_award_key="TEST_AWARD_3")
 
     # Award is not deleted; old transaction deleted; new transaction uses old award
-    mommy.make(Award, id=4, generated_unique_award_id="TEST_AWARD_4")
-    mommy.make(TransactionNormalized, id=5, award_id=4, unique_award_key="TEST_AWARD_4")
-    mommy.make(TransactionFPDS, transaction_id=5, detached_award_procurement_id=305, unique_award_key="TEST_AWARD_4")
-    mommy.make(
+    baker.make(AwardSearch, award_id=4, generated_unique_award_id="TEST_AWARD_4")
+    baker.make(TransactionNormalized, id=5, award_id=4, unique_award_key="TEST_AWARD_4")
+    baker.make(TransactionFPDS, transaction_id=5, detached_award_procurement_id=305, unique_award_key="TEST_AWARD_4")
+    baker.make(
         SourceProcurementTransaction,
         detached_award_procurement_id=306,
         detached_award_proc_unique="TEST_TRANSACTION_6",
@@ -151,8 +154,8 @@ def test_delete_fpds_success(monkeypatch):
         updated_at="2022-02-18 18:27:50",
         action_date="2022-02-18 18:27:50",
     )
-    mommy.make(ExternalDataType, external_data_type_id=1, name="fpds")
-    mommy.make(ExternalDataLoadDate, external_data_type_id=1, last_load_date="2022-02-01 18:27:50")
+    baker.make(ExternalDataType, external_data_type_id=1, name="fpds")
+    baker.make(ExternalDataLoadDate, external_data_type_id=1, last_load_date="2022-02-01 18:27:50")
 
     # Make sure current Awards and Transactions are linked
     update_awards()

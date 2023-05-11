@@ -1,7 +1,7 @@
 import datetime
 import pytest
 
-from model_mommy import mommy
+from model_bakery import baker
 from rest_framework import status
 from uuid import UUID
 from unittest.mock import Mock
@@ -14,6 +14,7 @@ from usaspending_api.search.tests.data.utilities import setup_elasticsearch_test
 
 TODAY = datetime.datetime.now()
 INSIDE_OF_LATEST = TODAY - datetime.timedelta(365 - 2)
+FISCAL_INSIDE_OF_LATEST = INSIDE_OF_LATEST + datetime.timedelta(days=30 * 3)
 
 TEST_REF_COUNTRY_CODE = {
     "PARENT COUNTRY CODE": {"country_code": "PARENT COUNTRY CODE", "country_name": "PARENT COUNTRY NAME"},
@@ -172,35 +173,76 @@ TEST_RECIPIENT_PROFILES = {
 }
 
 TEST_SUMMARY_TRANSACTION_NORMALIZED_FOR_FPDS = {
-    "latest": {"action_date": INSIDE_OF_LATEST, "federal_action_obligation": 100},
-    "FY2016": {"action_date": datetime.datetime(2015, 10, 1), "federal_action_obligation": 50},
-    "FY2008": {"action_date": datetime.datetime(2007, 10, 1), "federal_action_obligation": 200},
+    "latest": {
+        "action_date": INSIDE_OF_LATEST,
+        "fiscal_action_date": FISCAL_INSIDE_OF_LATEST,
+        "federal_action_obligation": 100,
+        "generated_pragmatic_obligation": 100,
+    },
+    "FY2016": {
+        "action_date": datetime.datetime(2015, 10, 1),
+        "fiscal_action_date": datetime.datetime(2016, 1, 1),
+        "federal_action_obligation": 50,
+        "generated_pragmatic_obligation": 50,
+    },
+    "FY2008": {
+        "action_date": datetime.datetime(2007, 10, 1),
+        "fiscal_action_date": datetime.datetime(2008, 1, 1),
+        "federal_action_obligation": 200,
+        "generated_pragmatic_obligation": 200,
+    },
 }
 TEST_SUMMARY_TRANSACTION_NORMALIZED_FOR_FABS = {
-    "latest": {"action_date": INSIDE_OF_LATEST, "face_value_loan_guarantee": 1000, "type": "07"},
-    "FY2016": {"action_date": datetime.datetime(2015, 10, 1), "face_value_loan_guarantee": 500, "type": "08"},
-    "FY2008": {"action_date": datetime.datetime(2007, 10, 1), "face_value_loan_guarantee": 2000, "type": "08"},
+    "latest": {
+        "action_date": INSIDE_OF_LATEST,
+        "fiscal_action_date": FISCAL_INSIDE_OF_LATEST,
+        "face_value_loan_guarantee": 1000,
+        "type": "07",
+        "generated_pragmatic_obligation": 0,
+    },
+    "FY2016": {
+        "action_date": datetime.datetime(2015, 10, 1),
+        "fiscal_action_date": datetime.datetime(2016, 1, 1),
+        "face_value_loan_guarantee": 500,
+        "type": "08",
+        "generated_pragmatic_obligation": 0,
+    },
+    "FY2008": {
+        "action_date": datetime.datetime(2007, 10, 1),
+        "fiscal_action_date": datetime.datetime(2008, 1, 1),
+        "face_value_loan_guarantee": 2000,
+        "type": "08",
+        "generated_pragmatic_obligation": 0,
+    },
 }
 TEST_SUMMARY_TRANSACTION_RECIPIENT = {
     "latest": {
-        "awardee_or_recipient_legal": "PARENT RECIPIENT",
-        "awardee_or_recipient_uniqu": "000000001",
-        "ultimate_parent_unique_ide": "000000001",
-        "awardee_or_recipient_uei": "AAAAAAAAAAAA",
-        "ultimate_parent_uei": "AAAAAAAAAAAA",
+        "recipient_name": "PARENT RECIPIENT",
+        "recipient_unique_id": "000000001",
+        "parent_recipient_unique_id": "000000001",
+        "recipient_uei": "AAAAAAAAAAAA",
+        "parent_uei": "AAAAAAAAAAAA",
+        "recipient_hash": "a52a7544-829b-c925-e1ba-d04d3171c09a",
+        "parent_recipient_hash": "a52a7544-829b-c925-e1ba-d04d3171c09a",
+        "recipient_levels": ["P", "C"],
     },
     "FY2016": {
-        "awardee_or_recipient_legal": "CHILD RECIPIENT",
-        "awardee_or_recipient_uniqu": "000000002",
-        "ultimate_parent_unique_ide": "000000001",
-        "awardee_or_recipient_uei": "BBBBBBBBBBBB",
-        "ultimate_parent_uei": "AAAAAAAAAAAA",
+        "recipient_name": "CHILD RECIPIENT",
+        "recipient_unique_id": "000000002",
+        "parent_recipient_unique_id": "000000001",
+        "recipient_uei": "BBBBBBBBBBBB",
+        "parent_uei": "AAAAAAAAAAAA",
+        "recipient_hash": "acb93cfc-e4f8-ecd5-5ac3-fa62f115e8f5",
+        "parent_recipient_hash": "a52a7544-829b-c925-e1ba-d04d3171c09a",
+        "recipient_levels": ["C"],
     },
     "FY2008": {
-        "awardee_or_recipient_legal": "OTHER RECIPIENT",
-        "awardee_or_recipient_uniqu": None,
-        "ultimate_parent_unique_ide": None,
-        "awardee_or_recipient_uei": None,
+        "recipient_name": "OTHER RECIPIENT",
+        "recipient_unique_id": None,
+        "parent_recipient_unique_id": None,
+        "parent_uei": None,
+        "recipient_hash": "cd6ac2ed-8d2d-2c2e-4934-710eb82100f3",
+        "recipient_levels": ["R"],
     },
 }
 
@@ -209,64 +251,56 @@ TEST_SUMMARY_TRANSACTION_RECIPIENT = {
 def create_transaction_test_data(transaction_recipient_list=None):
 
     if transaction_recipient_list is None:
-        transaction_recipient_list = TEST_SUMMARY_TRANSACTION_RECIPIENT.values()
+        transaction_recipient_list = list(TEST_SUMMARY_TRANSACTION_RECIPIENT.values())
 
-    for count, transaction_normalized in enumerate(TEST_SUMMARY_TRANSACTION_NORMALIZED_FOR_FPDS.values(), 1):
-        base_transaction_normalized = {
-            "id": count,
-            "award_id": count,
+    id = 1
+
+    for count, transaction_search in enumerate(TEST_SUMMARY_TRANSACTION_NORMALIZED_FOR_FPDS.values()):
+        base_transaction_search = {
+            "transaction_id": id,
+            "award_id": id,
             "is_fpds": True,
             "business_categories": ["expected", "business", "cat"],
         }
-        base_transaction_normalized.update(transaction_normalized)
-        mommy.make("awards.Award", id=count, latest_transaction_id=count)
-        mommy.make("awards.TransactionNormalized", **base_transaction_normalized)
+        base_transaction_search.update(transaction_search)
+        base_transaction_search.update(transaction_recipient_list[count])
+        baker.make("search.AwardSearch", award_id=id, latest_transaction_id=id)
+        baker.make("search.TransactionSearch", **base_transaction_search)
 
-    for count, transaction_fpds in enumerate(transaction_recipient_list, 1):
-        base_transaction_fpds = {"transaction_id": count}
-        base_transaction_fpds.update(transaction_fpds)
-        mommy.make("awards.TransactionFPDS", **base_transaction_fpds)
+        id += 1
 
-    for count, transaction_normalized in enumerate(
-        TEST_SUMMARY_TRANSACTION_NORMALIZED_FOR_FABS.values(), len(TEST_SUMMARY_TRANSACTION_NORMALIZED_FOR_FPDS) + 1
-    ):
-        base_transaction_normalized = {
-            "id": count,
-            "award_id": count,
+    for count, transaction_search in enumerate(TEST_SUMMARY_TRANSACTION_NORMALIZED_FOR_FABS.values()):
+        base_transaction_search = {
+            "transaction_id": id,
+            "award_id": id,
             "is_fpds": False,
             "business_categories": ["expected", "business", "cat"],
         }
-        base_transaction_normalized.update(transaction_normalized)
-        mommy.make("awards.Award", id=count, latest_transaction_id=count)
-        mommy.make("awards.TransactionNormalized", **base_transaction_normalized)
+        base_transaction_search.update(transaction_search)
+        base_transaction_search.update(transaction_recipient_list[count])
+        baker.make("search.AwardSearch", award_id=id, latest_transaction_id=id)
+        baker.make("search.TransactionSearch", **base_transaction_search)
 
-    for count, transaction_fabs in enumerate(
-        transaction_recipient_list, len(TEST_SUMMARY_TRANSACTION_NORMALIZED_FOR_FPDS) + 1
-    ):
-        base_transaction_fabs = {"transaction_id": count}
-        base_transaction_fabs.update(transaction_fabs)
-        base_transaction_fabs["uei"] = base_transaction_fabs["awardee_or_recipient_uei"]
-        del base_transaction_fabs["awardee_or_recipient_uei"]
-        mommy.make("awards.TransactionFABS", **base_transaction_fabs)
+        id += 1
 
 
 @pytest.mark.django_db
 def create_recipient_profile_test_data(*recipient_profile_list):
     for recipient_profile in recipient_profile_list:
-        mommy.make("recipient.RecipientProfile", **recipient_profile)
+        baker.make("recipient.RecipientProfile", **recipient_profile)
 
 
 @pytest.mark.django_db
 def create_recipient_lookup_test_data(*recipient_lookup_list):
     for recipient_lookup in recipient_lookup_list:
-        mommy.make("recipient.RecipientLookup", **recipient_lookup)
+        baker.make("recipient.RecipientLookup", **recipient_lookup)
 
 
 @pytest.mark.django_db
 def test_validate_recipient_id_success():
     """ Testing a run of a valid recipient id """
     recipient_id = "a52a7544-829b-c925-e1ba-d04d3171c09a-P"
-    mommy.make("recipient.RecipientProfile", **TEST_RECIPIENT_PROFILES[recipient_id])
+    baker.make("recipient.RecipientProfile", **TEST_RECIPIENT_PROFILES[recipient_id])
 
     expected_hash = recipient_id[:-2]
     expected_level = recipient_id[-1]
@@ -282,7 +316,7 @@ def test_validate_recipient_id_success():
 def test_validate_recipient_id_failures():
     """ Testing a run of invalid recipient ids """
     recipient_id = "a52a7544-829b-c925-e1ba-d04d3171c09a-P"
-    mommy.make("recipient.RecipientProfile", **TEST_RECIPIENT_PROFILES[recipient_id])
+    baker.make("recipient.RecipientProfile", **TEST_RECIPIENT_PROFILES[recipient_id])
 
     def call_validate_recipient_id(recipient_id):
         try:
@@ -312,7 +346,7 @@ def test_validate_recipient_id_failures():
 def test_extract_duns_uei_name_from_hash():
     """ Testing extracting name and duns from the recipient hash """
     recipient_hash = "a52a7544-829b-c925-e1ba-d04d3171c09a"
-    mommy.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[recipient_hash])
+    baker.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[recipient_hash])
 
     expected_duns = TEST_RECIPIENT_LOOKUPS[recipient_hash]["duns"]
     expected_uei = TEST_RECIPIENT_LOOKUPS[recipient_hash]["uei"]
@@ -329,11 +363,11 @@ def test_extract_parent_from_hash():
     # This one specifically has to be a child
     recipient_id = "acb93cfc-e4f8-ecd5-5ac3-fa62f115e8f5-C"
     recipient_hash = TEST_RECIPIENT_PROFILES[recipient_id]["recipient_hash"]
-    mommy.make("recipient.RecipientProfile", **TEST_RECIPIENT_PROFILES[recipient_id])
+    baker.make("recipient.RecipientProfile", **TEST_RECIPIENT_PROFILES[recipient_id])
 
     expected_parent_id = "a52a7544-829b-c925-e1ba-d04d3171c09a-P"
     parent_hash = expected_parent_id[:-2]
-    mommy.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[parent_hash])
+    baker.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[parent_hash])
 
     expected_name = TEST_RECIPIENT_LOOKUPS[parent_hash]["legal_business_name"]
     expected_duns = TEST_RECIPIENT_LOOKUPS[parent_hash]["duns"]
@@ -351,7 +385,7 @@ def test_extract_parent_from_hash_failure():
     # This one specifically has to be a child
     recipient_id = "acb93cfc-e4f8-ecd5-5ac3-fa62f115e8f5-C"
     recipient_hash = TEST_RECIPIENT_PROFILES[recipient_id]["recipient_hash"]
-    mommy.make("recipient.RecipientProfile", **TEST_RECIPIENT_PROFILES[recipient_id])
+    baker.make("recipient.RecipientProfile", **TEST_RECIPIENT_PROFILES[recipient_id])
 
     expected_name = None
     expected_duns = None
@@ -366,9 +400,9 @@ def test_extract_parent_from_hash_failure():
 def test_extract_location_success():
     """ Testing extracting location data from recipient hash using the DUNS table """
     recipient_hash = "a52a7544-829b-c925-e1ba-d04d3171c09a"
-    mommy.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[recipient_hash])
+    baker.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[recipient_hash])
     country_code = TEST_RECIPIENT_LOCATIONS[recipient_hash]["country_code"]
-    mommy.make("references.RefCountryCode", **TEST_REF_COUNTRY_CODE[country_code])
+    baker.make("references.RefCountryCode", **TEST_REF_COUNTRY_CODE[country_code])
 
     additional_blank_fields = ["address_line3", "foreign_province", "county_name", "foreign_postal_code"]
     expected_location = TEST_RECIPIENT_LOCATIONS[recipient_hash].copy()
@@ -391,7 +425,7 @@ def test_cleanup_location():
     assert {"country_code": "USA", "country_name": None} == recipients.cleanup_location(test_location)
 
     # Test Country_Code
-    mommy.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
+    baker.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
     test_location = {"country_code": "USA"}
     assert {"country_code": "USA", "country_name": "UNITED STATES"} == recipients.cleanup_location(test_location)
 
@@ -414,11 +448,11 @@ def test_extract_business_categories(monkeypatch):
     utm_objects.filter().order_by().values().first.return_value = {"business_categories": business_categories}
     monkeypatch.setattr("usaspending_api.search.models.TransactionSearch.objects", utm_objects)
 
-    mommy.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[recipient_hash])
+    baker.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[recipient_hash])
 
     # Mock DUNS
     # Should add 'category_business'
-    mommy.make("recipient.DUNS", **TEST_DUNS[TEST_RECIPIENT_LOOKUPS[recipient_hash]["duns"]])
+    baker.make("recipient.DUNS", **TEST_DUNS[TEST_RECIPIENT_LOOKUPS[recipient_hash]["duns"]])
 
     expected_business_cat = business_categories + ["category_business"]
     business_cat = recipients.extract_business_categories(recipient_name, recipient_uei, recipient_hash)
@@ -445,10 +479,13 @@ def test_obtain_recipient_totals_year(monkeypatch, elasticsearch_transaction_ind
 
     # load all of the transactions
     transaction_recipient_data = {
-        "awardee_or_recipient_legal": "CHILD RECIPIENT",
-        "awardee_or_recipient_uniqu": "000000002",
-        "awardee_or_recipient_uei": "BBBBBBBBBBBB",
-        "ultimate_parent_unique_ide": "000000001",
+        "recipient_name": "CHILD RECIPIENT",
+        "recipient_name_raw": "CHILD RECIPIENT",
+        "recipient_unique_id": "000000002",
+        "recipient_uei": "BBBBBBBBBBBB",
+        "parent_recipient_unique_id": "000000001",
+        "recipient_hash": recipient_hash,
+        "recipient_levels": ["C"],
     }
     create_transaction_test_data([transaction_recipient_data] * len(TEST_SUMMARY_TRANSACTION_RECIPIENT))
 
@@ -459,7 +496,7 @@ def test_obtain_recipient_totals_year(monkeypatch, elasticsearch_transaction_ind
     associated_recipient_profile = TEST_RECIPIENT_PROFILES[recipient_id].copy()
     associated_recipient_profile["last_12_months"] = 100
     associated_recipient_profile["last_12_months_count"] = 1
-    mommy.make("recipient.RecipientProfile", **associated_recipient_profile)
+    baker.make("recipient.RecipientProfile", **associated_recipient_profile)
 
     setup_elasticsearch_test(monkeypatch, elasticsearch_transaction_index)
 
@@ -493,7 +530,7 @@ def test_obtain_recipient_totals_parent(monkeypatch, elasticsearch_transaction_i
 
     # load recipient profiles
     for recipient_id, recipient_profile in TEST_RECIPIENT_PROFILES.items():
-        mommy.make("recipient.RecipientProfile", **recipient_profile)
+        baker.make("recipient.RecipientProfile", **recipient_profile)
 
     # load transactions for each child and parent (making sure it's excluded)
     create_transaction_test_data()
@@ -531,7 +568,7 @@ def test_recipient_overview(client, monkeypatch, elasticsearch_transaction_index
         if recipient_id == r_id:
             recipient_profile_copy["last_12_months"] = 100
             recipient_profile_copy["last_12_months_count"] = 1
-        mommy.make("recipient.RecipientProfile", **recipient_profile_copy)
+        baker.make("recipient.RecipientProfile", **recipient_profile_copy)
 
     # Mock Recipient Lookups
     create_recipient_lookup_test_data(*TEST_RECIPIENT_LOOKUPS.values())
@@ -540,8 +577,8 @@ def test_recipient_overview(client, monkeypatch, elasticsearch_transaction_index
     for duns, duns_dict in TEST_DUNS.items():
         test_duns_model = duns_dict.copy()
         country_code = test_duns_model["country_code"]
-        mommy.make("recipient.DUNS", **test_duns_model)
-        mommy.make("references.RefCountryCode", **TEST_REF_COUNTRY_CODE[country_code])
+        baker.make("recipient.DUNS", **test_duns_model)
+        baker.make("references.RefCountryCode", **TEST_REF_COUNTRY_CODE[country_code])
 
     setup_elasticsearch_test(monkeypatch, elasticsearch_transaction_index)
 
@@ -597,7 +634,7 @@ def test_extract_hash_from_duns_or_uei_via_duns():
     """ Testing extracting the hash/name from a DUNS """
     example_duns = "000000001"
     expected_hash = "a52a7544-829b-c925-e1ba-d04d3171c09a"
-    mommy.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[expected_hash])
+    baker.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[expected_hash])
 
     recipient_hash = recipients.extract_hash_from_duns_or_uei(example_duns)
     assert UUID(expected_hash) == recipient_hash
@@ -608,7 +645,7 @@ def test_extract_hash_from_duns_or_uei_via_uei():
     """ Testing extracting the hash/name from a DUNS """
     example_uei = "AAAAAAAAAAAA"
     expected_hash = "a52a7544-829b-c925-e1ba-d04d3171c09a"
-    mommy.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[expected_hash])
+    baker.make("recipient.RecipientLookup", **TEST_RECIPIENT_LOOKUPS[expected_hash])
 
     recipient_hash = recipients.extract_hash_from_duns_or_uei(example_uei)
     assert UUID(expected_hash) == recipient_hash

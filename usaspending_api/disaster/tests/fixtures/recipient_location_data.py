@@ -1,35 +1,220 @@
 import pytest
 
-from model_mommy import mommy
+from model_bakery import baker
 
 
 @pytest.fixture
 def awards_and_transactions():
     # Awards
-    award1 = mommy.make("awards.Award", latest_transaction_id=10, type="07", total_loan_value=3)
-    award2 = mommy.make("awards.Award", latest_transaction_id=20, type="07", total_loan_value=30)
-    award3 = mommy.make("awards.Award", latest_transaction_id=30, type="08", total_loan_value=300)
-    award4 = mommy.make("awards.Award", latest_transaction_id=50, type="B", total_loan_value=0)
-    award5 = mommy.make("awards.Award", latest_transaction_id=40, type="A", total_loan_value=0)
-    award6 = mommy.make("awards.Award", latest_transaction_id=60, type="C", total_loan_value=0)
-    award7 = mommy.make("awards.Award", latest_transaction_id=70, type="D", total_loan_value=0)
+    award1 = baker.make(
+        "search.AwardSearch",
+        award_id=1,
+        latest_transaction_id=10,
+        type="07",
+        total_loan_value=3,
+        action_date="2022-01-01",
+        is_fpds=False,
+        cfda_number="10.100",
+        pop_country_code="USA",
+        pop_state_code=None,
+        pop_county_code=None,
+        pop_county_name=None,
+        pop_congressional_code=None,
+        recipient_location_country_code=None,
+        recipient_location_state_code=None,
+        recipient_location_county_code=None,
+        recipient_location_county_name=None,
+        recipient_location_congressional_code=None,
+        recipient_name="RECIPIENT 1",
+        recipient_unique_id=None,
+        recipient_hash="5f572ec9-8b49-e5eb-22c7-f6ef316f7689",
+        recipient_levels=["R"],
+        disaster_emergency_fund_codes=["L"],
+        total_covid_outlay=1,
+        total_covid_obligation=2,
+        covid_spending_by_defc=[{"defc": "L", "outlay": 1, "obligation": 2}],
+    )
+    award2 = baker.make(
+        "search.AwardSearch",
+        award_id=2,
+        latest_transaction_id=20,
+        type="07",
+        total_loan_value=30,
+        action_date="2020-01-01",
+        is_fpds=False,
+        cfda_number="20.200",
+        pop_country_code="USA",
+        pop_state_code="SC",
+        pop_county_code="005",
+        pop_county_name="TEST NAME",
+        pop_congressional_code="50",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="SC",
+        recipient_location_county_code="001",
+        recipient_location_county_name="CHARLESTON",
+        recipient_location_congressional_code="90",
+        recipient_name="RECIPIENT 2",
+        recipient_unique_id="456789123",
+        recipient_hash="3c92491a-f2cd-ec7d-294b-7daf91511866",
+        recipient_levels=["R"],
+        disaster_emergency_fund_codes=["L"],
+        total_covid_outlay=10,
+        total_covid_obligation=20,
+        covid_spending_by_defc=[{"defc": "L", "outlay": 10, "obligation": 20}],
+    )
+    award3 = baker.make(
+        "search.AwardSearch",
+        award_id=3,
+        latest_transaction_id=30,
+        type="08",
+        total_loan_value=300,
+        action_date="2022-01-03",
+        is_fpds=False,
+        cfda_number="20.200",
+        pop_country_code="USA",
+        pop_state_code="WA",
+        pop_county_code="005",
+        pop_county_name="TEST NAME",
+        pop_congressional_code="50",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="SC",
+        recipient_location_county_code="001",
+        recipient_location_county_name="CHARLESTON",
+        recipient_location_congressional_code="50",
+        recipient_name="RECIPIENT, 3",
+        recipient_unique_id="987654321",
+        recipient_hash="bf05f751-6841-efd6-8f1b-0144163eceae",
+        recipient_levels=["C", "R"],
+        disaster_emergency_fund_codes=["L"],
+        total_covid_outlay=100,
+        total_covid_obligation=200,
+        covid_spending_by_defc=[{"defc": "L", "outlay": 100, "obligation": 200}],
+    )
+    award4 = baker.make(
+        "search.AwardSearch",
+        award_id=4,
+        latest_transaction_id=50,
+        type="B",
+        total_loan_value=0,
+        action_date="2022-01-04",
+        is_fpds=True,
+        pop_country_code="USA",
+        pop_state_code="WA",
+        pop_county_code="005",
+        pop_county_name="TEST NAME",
+        pop_congressional_code="50",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="WA",
+        recipient_location_county_code="005",
+        recipient_location_county_name="TEST NAME",
+        recipient_location_congressional_code="50",
+        recipient_name="RECIPIENT, 3",
+        recipient_unique_id="987654321",
+        recipient_hash="bf05f751-6841-efd6-8f1b-0144163eceae",
+        recipient_levels=["C", "R"],
+        disaster_emergency_fund_codes=["L"],
+        total_covid_outlay=1000,
+        total_covid_obligation=2000,
+        covid_spending_by_defc=[{"defc": "L", "outlay": 1000, "obligation": 2000}],
+    )
+    award5 = baker.make(
+        "search.AwardSearch",
+        award_id=5,
+        latest_transaction_id=40,
+        type="A",
+        total_loan_value=0,
+        action_date="2022-01-05",
+        is_fpds=True,
+        pop_country_code="USA",
+        pop_state_code="SC",
+        pop_county_code="001",
+        pop_county_name="CHARLESTON",
+        pop_congressional_code="10",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="WA",
+        recipient_location_county_code="005",
+        recipient_location_county_name="TEST NAME",
+        recipient_location_congressional_code="50",
+        recipient_name="MULTIPLE RECIPIENTS",
+        recipient_unique_id="096354360",
+        recipient_hash="5bf6217b-4a70-da67-1351-af6ab2e0a4b3",
+        recipient_levels=["R"],
+        disaster_emergency_fund_codes=["M"],
+        total_covid_outlay=10000,
+        total_covid_obligation=20000,
+        covid_spending_by_defc=[{"defc": "M", "outlay": 10000, "obligation": 20000}],
+    )
+    award6 = baker.make(
+        "search.AwardSearch",
+        award_id=6,
+        latest_transaction_id=60,
+        type="C",
+        total_loan_value=0,
+        action_date="2022-01-06",
+        is_fpds=True,
+        pop_country_code="USA",
+        pop_state_code="SC",
+        pop_county_code="001",
+        pop_county_name="CHARLESTON",
+        pop_congressional_code="90",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="SC",
+        recipient_location_county_code="005",
+        recipient_location_county_name="TEST NAME",
+        recipient_location_congressional_code="50",
+        recipient_name="RECIPIENT, 3",
+        recipient_unique_id="987654321",
+        recipient_hash="bf05f751-6841-efd6-8f1b-0144163eceae",
+        recipient_levels=["C", "R"],
+        disaster_emergency_fund_codes=["M"],
+        total_covid_outlay=100000,
+        total_covid_obligation=200000,
+        covid_spending_by_defc=[{"defc": "M", "outlay": 100000, "obligation": 200000}],
+    )
+    award7 = baker.make(
+        "search.AwardSearch",
+        award_id=7,
+        latest_transaction_id=70,
+        type="D",
+        total_loan_value=0,
+        action_date="2022-01-07",
+        is_fpds=True,
+        pop_country_code="USA",
+        pop_state_code="SC",
+        pop_county_code="001",
+        pop_county_name="CHARLESTON",
+        pop_congressional_code="90",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="SC",
+        recipient_location_county_code="001",
+        recipient_location_county_name="CHARLESTON",
+        recipient_location_congressional_code="10",
+        recipient_name="MULTIPLE RECIPIENTS",
+        recipient_unique_id=None,
+        recipient_hash="64af1cb7-993c-b64b-1c58-f5289af014c0",
+        recipient_levels=None,
+        disaster_emergency_fund_codes=["M"],
+        total_covid_outlay=1000000,
+        total_covid_obligation=2000000,
+        covid_spending_by_defc=[{"defc": "M", "outlay": 1000000, "obligation": 2000000}],
+    )
 
     # Disaster Emergency Fund Code
-    defc1 = mommy.make(
+    defc1 = baker.make(
         "references.DisasterEmergencyFundCode",
         code="L",
         public_law="PUBLIC LAW FOR CODE L",
         title="TITLE FOR CODE L",
         group_name="covid_19",
     )
-    defc2 = mommy.make(
+    defc2 = baker.make(
         "references.DisasterEmergencyFundCode",
         code="M",
         public_law="PUBLIC LAW FOR CODE M",
         title="TITLE FOR CODE M",
         group_name="covid_19",
     )
-    mommy.make(
+    baker.make(
         "references.DisasterEmergencyFundCode",
         code="N",
         public_law="PUBLIC LAW FOR CODE N",
@@ -38,7 +223,7 @@ def awards_and_transactions():
     )
 
     # Submission Attributes
-    sub1 = mommy.make(
+    sub1 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=2022,
         reporting_fiscal_period=8,
@@ -47,7 +232,7 @@ def awards_and_transactions():
         reporting_period_start="2022-05-01",
         submission_window_id="2022081",
     )
-    sub2 = mommy.make(
+    sub2 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=2022,
         reporting_fiscal_period=8,
@@ -56,7 +241,7 @@ def awards_and_transactions():
         reporting_period_start="2022-05-01",
         submission_window_id="2022081",
     )
-    sub3 = mommy.make(
+    sub3 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=2022,
         reporting_fiscal_period=8,
@@ -67,15 +252,15 @@ def awards_and_transactions():
     )
 
     # Toptier Agency
-    ta1 = mommy.make("references.ToptierAgency", toptier_agency_id=7, toptier_code="007", name="Agency 007")
+    ta1 = baker.make("references.ToptierAgency", toptier_agency_id=7, toptier_code="007", name="Agency 007")
 
     # Federal Account
-    fa1 = mommy.make(
+    fa1 = baker.make(
         "accounts.FederalAccount", federal_account_code="001-0000", account_title="FA 1", parent_toptier_agency=ta1
     )
 
     # Treasury Approriation Account
-    tas1 = mommy.make(
+    tas1 = baker.make(
         "accounts.TreasuryAppropriationAccount",
         funding_toptier_agency=ta1,
         budget_function_code=100,
@@ -88,7 +273,7 @@ def awards_and_transactions():
     )
 
     # Financial Accounts by Awards
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         pk=1,
         award=award1,
@@ -98,7 +283,7 @@ def awards_and_transactions():
         gross_outlay_amount_by_award_cpe=1,
         transaction_obligated_amount=2,
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         pk=2,
         award=award2,
@@ -108,7 +293,7 @@ def awards_and_transactions():
         gross_outlay_amount_by_award_cpe=10,
         transaction_obligated_amount=20,
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         pk=3,
         award=award3,
@@ -118,7 +303,7 @@ def awards_and_transactions():
         gross_outlay_amount_by_award_cpe=100,
         transaction_obligated_amount=200,
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         pk=4,
         award=award4,
@@ -128,7 +313,7 @@ def awards_and_transactions():
         gross_outlay_amount_by_award_cpe=1000,
         transaction_obligated_amount=2000,
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         pk=5,
         award=award5,
@@ -138,7 +323,7 @@ def awards_and_transactions():
         gross_outlay_amount_by_award_cpe=10000,
         transaction_obligated_amount=20000,
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         pk=6,
         award=award6,
@@ -148,7 +333,7 @@ def awards_and_transactions():
         gross_outlay_amount_by_award_cpe=100000,
         transaction_obligated_amount=200000,
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         pk=7,
         award=award7,
@@ -160,7 +345,7 @@ def awards_and_transactions():
     )
 
     # DABS Submission Window Schedule
-    mommy.make(
+    baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         id="2022081",
         is_quarter=False,
@@ -171,7 +356,7 @@ def awards_and_transactions():
         submission_fiscal_month=8,
         submission_reveal_date="2020-5-15",
     )
-    mommy.make(
+    baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         id="2022080",
         is_quarter=True,
@@ -183,193 +368,168 @@ def awards_and_transactions():
         submission_reveal_date="2020-5-15",
     )
 
-    # Transaction Normalized
-    mommy.make(
-        "awards.TransactionNormalized",
-        id=10,
+    # Transaction Search
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=10,
         award=award1,
         federal_action_obligation=5,
         action_date="2022-01-01",
         is_fpds=False,
+        cfda_number="10.100",
+        pop_country_code="USA",
+        pop_state_code=None,
+        pop_county_code=None,
+        pop_county_name=None,
+        pop_congressional_code=None,
+        recipient_location_country_code=None,
+        recipient_location_state_code=None,
+        recipient_location_county_code=None,
+        recipient_location_county_name=None,
+        recipient_location_congressional_code=None,
+        recipient_name="RECIPIENT 1",
+        recipient_name_raw="RECIPIENT 1",
+        recipient_unique_id=None,
     )
-    mommy.make(
-        "awards.TransactionNormalized",
-        id=20,
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=20,
         award=award2,
         federal_action_obligation=50,
         action_date="2022-01-02",
         is_fpds=False,
+        cfda_number="20.200",
+        pop_country_code="USA",
+        pop_state_code="SC",
+        pop_county_code="005",
+        pop_county_name="TEST NAME",
+        pop_congressional_code="50",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="SC",
+        recipient_location_county_code="001",
+        recipient_location_county_name="CHARLESTON",
+        recipient_location_congressional_code="90",
+        recipient_name="RECIPIENT 2",
+        recipient_name_raw="RECIPIENT 2",
+        recipient_unique_id="456789123",
     )
-    mommy.make(
-        "awards.TransactionNormalized",
-        id=30,
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=30,
         award=award3,
         federal_action_obligation=500,
         action_date="2022-01-03",
         is_fpds=False,
+        cfda_number="20.200",
+        pop_country_code="USA",
+        pop_state_code="WA",
+        pop_county_code="005",
+        pop_county_name="TEST NAME",
+        pop_congressional_code="50",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="SC",
+        recipient_location_county_code="001",
+        recipient_location_county_name="CHARLESTON",
+        recipient_location_congressional_code="50",
+        recipient_name="RECIPIENT, 3",
+        recipient_name_raw="RECIPIENT, 3",
+        recipient_unique_id="987654321",
     )
-    mommy.make(
-        "awards.TransactionNormalized",
-        id=40,
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=40,
         award=award4,
         federal_action_obligation=5000,
         action_date="2022-01-04",
         is_fpds=True,
+        pop_country_code="USA",
+        pop_state_code="WA",
+        pop_county_code="005",
+        pop_county_name="TEST NAME",
+        pop_congressional_code="50",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="WA",
+        recipient_location_county_code="005",
+        recipient_location_county_name="TEST NAME",
+        recipient_location_congressional_code="50",
+        recipient_name="MULTIPLE RECIPIENTS",
+        recipient_name_raw="MULTIPLE RECIPIENTS",
+        recipient_unique_id="096354360",
     )
-    mommy.make(
-        "awards.TransactionNormalized",
-        id=50,
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=50,
         award=award5,
         federal_action_obligation=50000,
         action_date="2022-01-05",
         is_fpds=True,
+        pop_country_code="USA",
+        pop_state_code="SC",
+        pop_county_code="001",
+        pop_county_name="CHARLESTON",
+        pop_congressional_code="10",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="WA",
+        recipient_location_county_code="005",
+        recipient_location_county_name="TEST NAME",
+        recipient_location_congressional_code="50",
+        recipient_name=None,
+        recipient_name_raw=None,
+        recipient_unique_id="987654321",
     )
-    mommy.make(
-        "awards.TransactionNormalized",
-        id=60,
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=60,
         award=award6,
         federal_action_obligation=500000,
         action_date="2022-01-06",
         is_fpds=True,
+        pop_country_code="USA",
+        pop_state_code="SC",
+        pop_county_code="001",
+        pop_county_name="CHARLESTON",
+        pop_congressional_code="90",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="SC",
+        recipient_location_county_code="005",
+        recipient_location_county_name="TEST NAME",
+        recipient_location_congressional_code="50",
+        recipient_name=None,
+        recipient_name_raw=None,
+        recipient_unique_id="987654321",
     )
-    mommy.make(
-        "awards.TransactionNormalized",
-        id=70,
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=70,
         award=award7,
         federal_action_obligation=5000000,
         action_date="2022-01-07",
         is_fpds=True,
-    )
-
-    # Transaction FABS
-    mommy.make(
-        "awards.TransactionFABS",
-        transaction_id=10,
-        cfda_number="10.100",
-        place_of_perform_country_c="USA",
-        place_of_perfor_state_code=None,
-        place_of_perform_county_co=None,
-        place_of_perform_county_na=None,
-        place_of_performance_congr=None,
-        legal_entity_country_code=None,
-        legal_entity_state_code=None,
-        legal_entity_county_code=None,
-        legal_entity_county_name=None,
-        legal_entity_congressional=None,
-        awardee_or_recipient_legal="RECIPIENT 1",
-        awardee_or_recipient_uniqu=None,
-    )
-    mommy.make(
-        "awards.TransactionFABS",
-        transaction_id=20,
-        cfda_number="20.200",
-        place_of_perform_country_c="USA",
-        place_of_perfor_state_code="SC",
-        place_of_perform_county_co="005",
-        place_of_perform_county_na="TEST NAME",
-        place_of_performance_congr="50",
-        legal_entity_country_code="USA",
-        legal_entity_state_code="SC",
-        legal_entity_county_code="001",
-        legal_entity_county_name="CHARLESTON",
-        legal_entity_congressional="90",
-        awardee_or_recipient_legal="RECIPIENT 2",
-        awardee_or_recipient_uniqu="456789123",
-    )
-    mommy.make(
-        "awards.TransactionFABS",
-        transaction_id=30,
-        cfda_number="20.200",
-        place_of_perform_country_c="USA",
-        place_of_perfor_state_code="WA",
-        place_of_perform_county_co="005",
-        place_of_perform_county_na="TEST NAME",
-        place_of_performance_congr="50",
-        legal_entity_country_code="USA",
-        legal_entity_state_code="SC",
-        legal_entity_county_code="001",
-        legal_entity_county_name="CHARLESTON",
-        legal_entity_congressional="50",
-        awardee_or_recipient_legal="RECIPIENT, 3",
-        awardee_or_recipient_uniqu="987654321",
-    )
-
-    # Transaction FPDS
-    mommy.make(
-        "awards.TransactionFPDS",
-        transaction_id=40,
-        place_of_perform_country_c="USA",
-        place_of_performance_state="WA",
-        place_of_perform_county_co="005",
-        place_of_perform_county_na="TEST NAME",
-        place_of_performance_congr="50",
-        legal_entity_country_code="USA",
-        legal_entity_state_code="WA",
-        legal_entity_county_code="005",
-        legal_entity_county_name="TEST NAME",
-        legal_entity_congressional="50",
-        awardee_or_recipient_legal="MULTIPLE RECIPIENTS",
-        awardee_or_recipient_uniqu="096354360",
-    )
-    mommy.make(
-        "awards.TransactionFPDS",
-        transaction_id=50,
-        place_of_perform_country_c="USA",
-        place_of_performance_state="SC",
-        place_of_perform_county_co="001",
-        place_of_perform_county_na="CHARLESTON",
-        place_of_performance_congr="10",
-        legal_entity_country_code="USA",
-        legal_entity_state_code="WA",
-        legal_entity_county_code="005",
-        legal_entity_county_name="TEST NAME",
-        legal_entity_congressional="50",
-        awardee_or_recipient_legal=None,
-        awardee_or_recipient_uniqu="987654321",
-    )
-    mommy.make(
-        "awards.TransactionFPDS",
-        transaction_id=60,
-        place_of_perform_country_c="USA",
-        place_of_performance_state="SC",
-        place_of_perform_county_co="001",
-        place_of_perform_county_na="CHARLESTON",
-        place_of_performance_congr="90",
-        legal_entity_country_code="USA",
-        legal_entity_state_code="SC",
-        legal_entity_county_code="005",
-        legal_entity_county_name="TEST NAME",
-        legal_entity_congressional="50",
-        awardee_or_recipient_legal=None,
-        awardee_or_recipient_uniqu="987654321",
-    )
-    mommy.make(
-        "awards.TransactionFPDS",
-        transaction_id=70,
-        place_of_perform_country_c="USA",
-        place_of_performance_state="SC",
-        place_of_perform_county_co="001",
-        place_of_perform_county_na="CHARLESTON",
-        place_of_performance_congr="90",
-        legal_entity_country_code="USA",
-        legal_entity_state_code="SC",
-        legal_entity_county_code="01",
-        legal_entity_county_name="CHARLESTON",
-        legal_entity_congressional="10",
-        awardee_or_recipient_legal="MULTIPLE RECIPIENTS",
-        awardee_or_recipient_uniqu=None,
+        pop_country_code="USA",
+        pop_state_code="SC",
+        pop_county_code="001",
+        pop_county_name="CHARLESTON",
+        pop_congressional_code="90",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="SC",
+        recipient_location_county_code="001",
+        recipient_location_county_name="CHARLESTON",
+        recipient_location_congressional_code="10",
+        recipient_name="MULTIPLE RECIPIENTS",
+        recipient_name_raw="MULTIPLE RECIPIENTS",
+        recipient_unique_id=None,
     )
 
     # References State Data
-    mommy.make("recipient.StateData", id="45-2022", fips="45", code="SC", name="South Carolina")
-    mommy.make("recipient.StateData", id="53-2022", fips="53", code="WA", name="Washington")
+    baker.make("recipient.StateData", id="45-2022", fips="45", code="SC", name="South Carolina")
+    baker.make("recipient.StateData", id="53-2022", fips="53", code="WA", name="Washington")
 
     # References Country
-    mommy.make("references.RefCountryCode", country_code="CAN", country_name="CANADA")
-    mommy.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
+    baker.make("references.RefCountryCode", country_code="CAN", country_name="CANADA")
+    baker.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
 
     # References Population County
-    mommy.make(
+    baker.make(
         "references.PopCounty",
         id=1,
         state_code="45",
@@ -377,7 +537,7 @@ def awards_and_transactions():
         county_number="001",
         latest_population=1,
     )
-    mommy.make(
+    baker.make(
         "references.PopCounty",
         id=2,
         state_code="45",
@@ -385,7 +545,7 @@ def awards_and_transactions():
         county_number="005",
         latest_population=10,
     )
-    mommy.make(
+    baker.make(
         "references.PopCounty",
         id=3,
         state_code="53",
@@ -393,7 +553,7 @@ def awards_and_transactions():
         county_number="005",
         latest_population=100,
     )
-    mommy.make(
+    baker.make(
         "references.PopCounty",
         id=4,
         state_code="45",
@@ -401,7 +561,7 @@ def awards_and_transactions():
         county_number="000",
         latest_population=1000,
     )
-    mommy.make(
+    baker.make(
         "references.PopCounty",
         id=5,
         state_code="53",
@@ -411,7 +571,7 @@ def awards_and_transactions():
     )
 
     # References Population Congressional District
-    mommy.make(
+    baker.make(
         "references.PopCongressionalDistrict",
         id=1,
         state_code="45",
@@ -419,7 +579,7 @@ def awards_and_transactions():
         congressional_district="90",
         latest_population=1,
     )
-    mommy.make(
+    baker.make(
         "references.PopCongressionalDistrict",
         id=2,
         state_code="45",
@@ -427,7 +587,7 @@ def awards_and_transactions():
         congressional_district="10",
         latest_population=10,
     )
-    mommy.make(
+    baker.make(
         "references.PopCongressionalDistrict",
         id=2,
         state_code="45",
@@ -435,7 +595,7 @@ def awards_and_transactions():
         congressional_district="50",
         latest_population=100,
     )
-    mommy.make(
+    baker.make(
         "references.PopCongressionalDistrict",
         id=3,
         state_code="53",
@@ -443,44 +603,47 @@ def awards_and_transactions():
         congressional_district="50",
         latest_population=1000,
     )
+    baker.make("references.CityCountyStateCode", county_numeric="005", state_numeric="53", county_name="Test Name")
+    baker.make("references.CityCountyStateCode", county_numeric="005", state_numeric="45", county_name="Test Name")
+    baker.make("references.CityCountyStateCode", county_numeric="001", state_numeric="45", county_name="Charleston")
 
     # Recipient Profile
-    mommy.make(
+    baker.make(
         "recipient.RecipientProfile",
         recipient_name="RECIPIENT 1",
         recipient_level="R",
         recipient_hash="5f572ec9-8b49-e5eb-22c7-f6ef316f7689",
         recipient_unique_id=None,
     )
-    mommy.make(
+    baker.make(
         "recipient.RecipientProfile",
         recipient_name="RECIPIENT 2",
         recipient_level="R",
         recipient_hash="3c92491a-f2cd-ec7d-294b-7daf91511866",
         recipient_unique_id="456789123",
     )
-    mommy.make(
+    baker.make(
         "recipient.RecipientProfile",
         recipient_name="RECIPIENT, 3",
         recipient_level="P",
         recipient_hash="bf05f751-6841-efd6-8f1b-0144163eceae",
         recipient_unique_id="987654321",
     )
-    mommy.make(
+    baker.make(
         "recipient.RecipientProfile",
         recipient_name="RECIPIENT, 3",
         recipient_level="C",
         recipient_hash="bf05f751-6841-efd6-8f1b-0144163eceae",
         recipient_unique_id="987654321",
     )
-    mommy.make(
+    baker.make(
         "recipient.RecipientProfile",
         recipient_name="MULTIPLE RECIPIENTS",
         recipient_level="R",
         recipient_hash="5bf6217b-4a70-da67-1351-af6ab2e0a4b3",
         recipient_unique_id="096354360",
     )
-    mommy.make(
+    baker.make(
         "recipient.RecipientProfile",
         recipient_name="RECIPIENT, 3",
         recipient_level="R",
@@ -489,13 +652,37 @@ def awards_and_transactions():
     )
 
     # Recipient Lookup
-    mommy.make(
+    baker.make(
         "recipient.RecipientLookup",
         legal_business_name="RECIPIENT, 3",
         recipient_hash="bf05f751-6841-efd6-8f1b-0144163eceae",
         duns="987654321",
     )
-
+    baker.make(
+        "recipient.RecipientLookup",
+        legal_business_name="RECIPIENT 2",
+        recipient_hash="3c92491a-f2cd-ec7d-294b-7daf91511866",
+        duns="456789123",
+    )
+    baker.make(
+        "recipient.RecipientLookup",
+        legal_business_name="RECIPIENT 1",
+        recipient_hash="5f572ec9-8b49-e5eb-22c7-f6ef316f7689",
+        duns=None,
+        uei=None,
+    )
+    baker.make(
+        "recipient.RecipientLookup",
+        legal_business_name="MULTIPLE RECIPIENTS",
+        recipient_hash="5bf6217b-4a70-da67-1351-af6ab2e0a4b3",
+        duns="096354360",
+    )
+    baker.make(
+        "recipient.RecipientLookup",
+        legal_business_name="MULTIPLE RECIPIENTS",
+        recipient_hash="64af1cb7-993c-b64b-1c58-f5289af014c0",
+        duns=None,
+    )
     # Ref Country Code
-    mommy.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
-    mommy.make("references.RefCountryCode", country_code="CAN", country_name="CANADA")
+    baker.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
+    baker.make("references.RefCountryCode", country_code="CAN", country_name="CANADA")

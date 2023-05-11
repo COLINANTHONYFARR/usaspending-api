@@ -1,40 +1,18 @@
 from datetime import date
-from django.db import DEFAULT_DB_ALIAS
-from django.db.models import Aggregate, Case, CharField, Func, IntegerField, Subquery, Value, When
-from django.db.models.functions import Concat, LPad, Cast
 
-from usaspending_api.search.models import (
-    ContractAwardSearchMatview,
-    DirectPaymentAwardSearchMatview,
-    GrantAwardSearchMatview,
-    IDVAwardSearchMatview,
-    LoanAwardSearchMatview,
-    OtherAwardSearchMatview,
-)
+from django.contrib.postgres.aggregates import StringAgg
+from django.db import DEFAULT_DB_ALIAS
+from django.db.models import Aggregate, Case, CharField, Func, IntegerField, TextField, Value, When
+from django.db.models.functions import Concat, LPad, Cast
 
 from usaspending_api.awards.v2.lookups.lookups import (
     assistance_type_mapping,
-    contract_type_mapping,
-    direct_payment_type_mapping,
-    grant_type_mapping,
-    idv_type_mapping,
-    loan_type_mapping,
-    other_type_mapping,
     procurement_type_mapping,
+    all_award_types_mappings,
 )
 
 
 TYPES_TO_QUOTE_IN_SQL = (str, date)
-
-
-CATEGORY_TO_MODEL = {
-    "contracts": {"model": ContractAwardSearchMatview, "types": set(contract_type_mapping.keys())},
-    "direct_payments": {"model": DirectPaymentAwardSearchMatview, "types": set(direct_payment_type_mapping.keys())},
-    "grants": {"model": GrantAwardSearchMatview, "types": set(grant_type_mapping.keys())},
-    "idvs": {"model": IDVAwardSearchMatview, "types": set(idv_type_mapping.keys())},
-    "loans": {"model": LoanAwardSearchMatview, "types": set(loan_type_mapping.keys())},
-    "other": {"model": OtherAwardSearchMatview, "types": set(other_type_mapping.keys())},
-}
 
 
 class AwardGroupsException(Exception):
@@ -70,6 +48,18 @@ class FiscalYearAndQuarter(Func):
     output_field = CharField()
 
 
+class CFDAs(Func):
+    """ Generates the CFDAs string from the text array of JSON strings of cfdas. """
+
+    function = "array_to_string"
+    template = (
+        "%(function)s(ARRAY("
+        "SELECT CONCAT(unnest_cfdas::JSON->>'cfda_number', ': ', unnest_cfdas::JSON->>'cfda_program_title')"
+        " FROM unnest(%(expressions)s) AS unnest_cfdas), '; ')"
+    )
+    output_field = TextField()
+
+
 class BoolOr(Aggregate):
     """true if at least one input value is true, otherwise false"""
 
@@ -85,18 +75,29 @@ class ConcatAll(Func):
     """
 
     function = "CONCAT"
+    output_field = TextField()
 
 
-class AvoidSubqueryInGroupBy(Subquery):
+class StringAggWithDefault(StringAgg):
     """
-    Django currently adds Subqueries to the Group By clause by default when an Aggregation or Annotation is
-    used. This is not always needed and for those queries where it is not needed it can hurt performance.
-    The ability to avoid this was implemented in Django 3.2:
-    https://github.com/django/django/commit/fb3f034f1c63160c0ff13c609acd01c18be12f80
+    In Django 3.2 a change was made that now requires the output_field defined in Aggregations for mixed types.
+    From the release notes:
+        Value() expression now automatically resolves its output_field to the appropriate Field subclass based
+        on the type of its provided value for bool, bytes, float, int, str, datetime.date, datetime.datetime,
+        datetime.time, datetime.timedelta, decimal.Decimal, and uuid.UUID instances. As a consequence, resolving
+        an output_field for database functions and combined expressions may now crash with mixed types when
+        using Value(). You will need to explicitly set the output_field in such cases.
+    In most cases we can simply add the output_field to aggregations to resolve this, however, for
+    django.contrib.postgres.aggregates.StringAgg this is not an option and there is no output_field set.
+    This was fixed in Django's development branch, but has not been released to any version yet:
+        https://github.com/django/django/pull/14898/files#diff-7a96646614a5df088584a163e17143464f836555ec84808a2f24b587b86284dbR93
+
+    As a result, this method sets the output_field as a workaround until either Django 3.2 is patched with the linked
+    change, or we upgrade to a version which has the change.
+    TODO: Remove this function and revert usages back to normal StringAgg when the above change is available
     """
 
-    def get_group_by_cols(self):
-        return []
+    output_field = TextField()
 
 
 def get_fyp_notation(relation_name=None):
@@ -136,6 +137,7 @@ def get_fyp_or_q_notation(relation_name=None):
     return Case(
         When(**{f"{prefix}quarter_format_flag": True}, then=get_fyq_notation(relation_name)),
         default=get_fyp_notation(relation_name),
+        output_field=TextField(),
     )
 
 
@@ -176,14 +178,14 @@ def generate_raw_quoted_query(queryset):
     return sql % tuple(str_fix_params)
 
 
-def obtain_view_from_award_group(type_list):
+def obtain_category_from_award_group(type_list):
     if not type_list:
         raise AwardGroupsException("Invalid award type list: No types provided.")
 
     type_set = set(type_list)
-    for category, values in CATEGORY_TO_MODEL.items():
-        if type_set <= values["types"]:
-            return values["model"]
+    for category, category_types in all_award_types_mappings.items():
+        if type_set <= set(category_types):
+            return category
     else:
         raise AwardGroupsException("Invalid award type list: Types cross multiple categories.")
 
@@ -196,7 +198,7 @@ def award_types_are_valid_groups(type_list: list) -> bool:
     """
     is_valid = False
     try:
-        obtain_view_from_award_group(type_list)
+        obtain_category_from_award_group(type_list)
         is_valid = True
     except AwardGroupsException:
         # If this error was thrown, it means is_valid is still False.

@@ -1,7 +1,7 @@
 import datetime
 
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from rest_framework import status
 
@@ -124,12 +124,30 @@ def test_basic_success(client, disaster_account_data, elasticsearch_account_inde
 @pytest.mark.django_db
 def test_award_type_codes(client, disaster_account_data, elasticsearch_award_index, monkeypatch, helpers):
     setup_elasticsearch_test(monkeypatch, elasticsearch_award_index)
-    helpers.patch_datetime_now(monkeypatch, 2022, 12, 31)
+    helpers.patch_datetime_now(monkeypatch, 2022, 12, 30)
 
     resp = helpers.post_for_spending_endpoint(
-        client, url, award_type_codes=["A", "07", "02"], def_codes=["L", "M", "N", "O", "P"], spending_type="award"
+        client, url, award_type_codes=["A", "07", "02"], def_codes=["O"], spending_type="award"
     )
     expected_results = [
+        {
+            "id": 4,
+            "code": "009",
+            "description": "Agency 009",
+            "award_count": 1,
+            "obligation": 1000.0,
+            "outlay": 1000.0,
+            "children": [
+                {
+                    "id": 4,
+                    "code": "3008",
+                    "description": "Subtier 3008",
+                    "award_count": 1,
+                    "obligation": 1000.0,
+                    "outlay": 1000.0,
+                }
+            ],
+        },
         {
             "id": 2,
             "code": "008",
@@ -179,7 +197,7 @@ def test_award_type_codes(client, disaster_account_data, elasticsearch_award_ind
     assert resp.json()["results"] == expected_results
 
     resp = helpers.post_for_spending_endpoint(
-        client, url, award_type_codes=["A"], def_codes=["L", "M", "N", "O", "P"], spending_type="award"
+        client, url, award_type_codes=["A"], def_codes=["O"], spending_type="award"
     )
     expected_results = [
         {
@@ -206,9 +224,27 @@ def test_award_type_codes(client, disaster_account_data, elasticsearch_award_ind
     assert resp.json()["results"] == expected_results
 
     resp = helpers.post_for_spending_endpoint(
-        client, url, award_type_codes=["02"], def_codes=["L", "M", "N", "O", "P"], spending_type="award"
+        client, url, award_type_codes=["02"], def_codes=["O"], spending_type="award"
     )
     expected_results = [
+        {
+            "id": 4,
+            "code": "009",
+            "description": "Agency 009",
+            "award_count": 1,
+            "obligation": 1000.0,
+            "outlay": 1000.0,
+            "children": [
+                {
+                    "id": 4,
+                    "code": "3008",
+                    "description": "Subtier 3008",
+                    "award_count": 1,
+                    "obligation": 1000.0,
+                    "outlay": 1000.0,
+                }
+            ],
+        },
         {
             "id": 2,
             "code": "008",
@@ -364,7 +400,7 @@ def test_outlay_calculation(client, disaster_account_data, elasticsearch_account
     defc_l = DisasterEmergencyFundCode.objects.get(code="L")
     tas = TreasuryAppropriationAccount.objects.get(account_title="TA 2")
     sub = SubmissionAttributes.objects.get(toptier_code="008", reporting_fiscal_year=2022, reporting_fiscal_period=8)
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         treasury_account=tas,
         submission=sub,

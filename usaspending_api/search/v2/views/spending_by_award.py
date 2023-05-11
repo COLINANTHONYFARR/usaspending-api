@@ -1,5 +1,5 @@
 import copy
-import json
+from ast import literal_eval
 
 from sys import maxsize
 from django.conf import settings
@@ -10,9 +10,8 @@ from rest_framework.views import APIView
 
 import logging
 from usaspending_api.awards.models import Award
-from usaspending_api.etl.elasticsearch_loader_helpers.aggregate_key_functions import return_one_level
+from usaspending_api.recipient.models import RecipientProfile
 from usaspending_api.references.models import Agency, ToptierAgencyPublishedDABSView
-from usaspending_api.awards.v2.filters.filter_helpers import add_date_range_comparison_types
 from usaspending_api.awards.v2.filters.sub_award import subaward_filter
 from usaspending_api.awards.v2.lookups.lookups import (
     assistance_type_mapping,
@@ -63,9 +62,9 @@ GLOBAL_MAP = {
         },
     },
     "subaward": {
-        "minimum_db_fields": {"subaward_number", "piid", "fain", "award_type", "award_id"},
+        "minimum_db_fields": {"subaward_number", "piid", "fain", "prime_award_group", "award_id"},
         "api_to_db_mapping_list": [contract_subaward_mapping, grant_subaward_mapping],
-        "award_semaphore": "award_type",
+        "award_semaphore": "prime_award_group",
         "award_id_fields": ["award__piid", "award__fain"],
         "internal_id_fields": {"internal_id": "subaward_number", "prime_award_internal_id": "award_id"},
         "generated_award_field": ("prime_award_generated_internal_id", "prime_award_internal_id"),
@@ -91,9 +90,12 @@ class SpendingByAwardVisualizationViewSet(APIView):
         json_request = self.validate_request_data(request.data)
         self.is_subaward = json_request["subawards"]
         self.constants = GLOBAL_MAP["subaward"] if self.is_subaward else GLOBAL_MAP["award"]
-        self.filters = add_date_range_comparison_types(
-            json_request.get("filters"), self.is_subaward, gte_date_type="action_date", lte_date_type="date_signed"
-        )
+        filters = json_request.get("filters", {})
+        if not self.is_subaward and filters.get("time_period") is not None:
+            for time_period in filters["time_period"]:
+                time_period["gte_date_type"] = time_period.get("date_type", "action_date")
+                time_period["lte_date_type"] = time_period.get("date_type", "date_signed")
+        self.filters = filters
         self.fields = json_request["fields"]
         self.pagination = {
             "limit": json_request["limit"],
@@ -247,7 +249,7 @@ class SpendingByAwardVisualizationViewSet(APIView):
         return queryset
 
     def custom_queryset_order_by(self, queryset, sort_field_names, order):
-        """ Explicitly set NULLS LAST in the ordering to encourage the usage of the indexes."""
+        """Explicitly set NULLS LAST in the ordering to encourage the usage of the indexes."""
         if order == "desc":
             order_by_list = [F(field).desc(nulls_last=True) for field in sort_field_names]
         else:
@@ -269,7 +271,27 @@ class SpendingByAwardVisualizationViewSet(APIView):
         filter_query = QueryWithFilters.generate_awards_elasticsearch_query(self.filters)
         sort_field = self.get_elastic_sort_by_fields()
         covid_sort_fields = {"COVID-19 Obligations": "obligation", "COVID-19 Outlays": "outlay"}
-        if "covid_spending_by_defc" in sort_field:
+        iija_sort_fields = {"Infrastructure Obligations": "obligation", "Infrastructure Outlays": "outlay"}
+
+        if "iija_spending_by_defc" in sort_field:
+            sort_field.remove("iija_spending_by_defc")
+            sorts = [
+                {
+                    f"iija_spending_by_defc.{iija_sort_fields[self.pagination['sort_key']]}": {
+                        "mode": "sum",
+                        "order": self.pagination["sort_order"],
+                        "nested": {
+                            "path": "iija_spending_by_defc",
+                        },
+                    }
+                }
+            ]
+            if self.filters.get("def_codes") is not None:
+                sorts[0][f"iija_spending_by_defc.{iija_sort_fields[self.pagination['sort_key']]}"]["nested"].update(
+                    {"filter": {"terms": {"iija_spending_by_defc.defc": self.filters.get("def_codes", [])}}}
+                )
+            sorts.extend([{field: self.pagination["sort_order"]} for field in sort_field])
+        elif "covid_spending_by_defc" in sort_field:
             sort_field.remove("covid_spending_by_defc")
             sorts = [
                 {
@@ -393,6 +415,26 @@ class SpendingByAwardVisualizationViewSet(APIView):
                         for x in row.get("COVID-19 Outlays")
                     ]
                 )
+            if row.get("Infrastructure Obligations"):
+                row["Infrastructure Obligations"] = sum(
+                    [
+                        x["obligation"]
+                        if (self.filters.get("def_codes") is not None and x["defc"] in self.filters["def_codes"])
+                        or self.filters.get("def_codes") is None
+                        else 0
+                        for x in row.get("Infrastructure Obligations")
+                    ]
+                )
+            if row.get("Infrastructure Outlays"):
+                row["Infrastructure Outlays"] = sum(
+                    [
+                        x["outlay"]
+                        if (self.filters.get("def_codes") is not None and x["defc"] in self.filters["def_codes"])
+                        or self.filters.get("def_codes") is None
+                        else 0
+                        for x in row.get("Infrastructure Outlays")
+                    ]
+                )
             if row.get("def_codes"):
                 if self.filters.get("def_codes"):
                     row["def_codes"] = list(filter(lambda x: x in self.filters.get("def_codes"), row["def_codes"]))
@@ -440,13 +482,16 @@ class SpendingByAwardVisualizationViewSet(APIView):
         }
 
     def get_recipient_hash_with_level(self, award_doc):
-        recipient_agg_key = json.loads(award_doc.get("recipient_agg_key"))
-        recipient_hash = recipient_agg_key.get("hash")
-        recipient_levels = recipient_agg_key.get("levels", [])
+        recipient_info = award_doc.get("recipient_agg_key").split("/")
+        recipient_hash = recipient_info[0] if recipient_info else None
+        if len(recipient_info) > 1 and recipient_info[1].upper() != "NONE":
+            recipient_levels = literal_eval(recipient_info[1])
+        else:
+            recipient_levels = []
 
         if recipient_hash is None or len(recipient_levels) == 0:
             return None
 
-        recipient_level = return_one_level(recipient_levels)
+        recipient_level = RecipientProfile.return_one_level(recipient_levels)
 
         return f"{recipient_hash}-{recipient_level}"

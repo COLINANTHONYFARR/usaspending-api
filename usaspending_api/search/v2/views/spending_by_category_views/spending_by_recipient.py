@@ -1,4 +1,3 @@
-import json
 from decimal import Decimal
 from typing import List
 
@@ -7,7 +6,7 @@ from django.utils.decorators import method_decorator
 
 from usaspending_api.common.api_versioning import deprecated
 from usaspending_api.common.recipient_lookups import combine_recipient_hash_and_level
-from usaspending_api.recipient.models import RecipientProfile
+from usaspending_api.recipient.models import RecipientLookup, RecipientProfile
 from usaspending_api.recipient.v2.lookups import SPECIAL_CASES
 from usaspending_api.search.v2.views.spending_by_category_views.spending_by_category import (
     Category,
@@ -35,10 +34,12 @@ class RecipientViewSet(AbstractSpendingByCategoryViewSet):
             profile_filter = {"recipient_hash": row["recipient_hash"]}
         elif "recipient_unique_id" in row:
             profile_filter = {"recipient_unique_id": row["recipient_unique_id"]}
+        elif "sub_awardee_or_recipient_uniqu" in row:
+            profile_filter = {"recipient_unique_id": row["sub_awardee_or_recipient_uniqu"]}
         else:
             raise RuntimeError(
                 "Attempted to lookup recipient profile using a queryset that contains neither "
-                "'recipient_hash' nor 'recipient_unique_id'"
+                "'recipient_hash' nor 'recipient_unique_id' nor 'sub_awardee_or_recipient_uniqu'"
             )
 
         profile = (
@@ -62,18 +63,35 @@ class RecipientViewSet(AbstractSpendingByCategoryViewSet):
         )
 
     def build_elasticsearch_result(self, response: dict) -> List[dict]:
+        # Get the codes
+        recipient_info_buckets = response.get("group_by_agg_key", {}).get("buckets", [])
+        recipient_hashes = [
+            bucket.get("key").split("/")[0] for bucket in recipient_info_buckets if bucket.get("key") != ""
+        ]
 
+        # Get the current recipient info
+        current_recipient_info = {}
+        recipient_info_query = RecipientLookup.objects.filter(recipient_hash__in=recipient_hashes).values(
+            "duns", "legal_business_name", "recipient_hash"
+        )
+        for recipient_info in recipient_info_query.all():
+            current_recipient_info[str(recipient_info["recipient_hash"])] = recipient_info
+
+        # Build out the results
         results = []
-        location_info_buckets = response.get("group_by_agg_key", {}).get("buckets", [])
-        for bucket in location_info_buckets:
-            recipient_info = json.loads(bucket.get("key"))
+        for bucket in recipient_info_buckets:
+            result_hash, result_level = tuple(bucket.get("key").split("/")) if bucket.get("key") else (None, None)
+            result_hash_with_level = f"{result_hash}-{result_level}" if (result_hash and result_level) else None
+            recipient_info = current_recipient_info.get(result_hash) or {}
 
             results.append(
                 {
                     "amount": int(bucket.get("sum_field", {"value": 0})["value"]) / Decimal("100"),
-                    "recipient_id": recipient_info["hash_with_level"] or None,
-                    "name": recipient_info["name"] or None,
-                    "code": recipient_info["duns"] or "Recipient not provided",
+                    "recipient_id": result_hash_with_level,
+                    "name": (
+                        recipient_info["legal_business_name"] if recipient_info.get("legal_business_name") else None
+                    ),
+                    "code": recipient_info.get("duns") or "Recipient not provided",
                 }
             )
 
@@ -81,8 +99,8 @@ class RecipientViewSet(AbstractSpendingByCategoryViewSet):
 
     def query_django_for_subawards(self, base_queryset: QuerySet) -> List[dict]:
         django_filters = {}
-        django_values = ["recipient_name", "recipient_unique_id"]
-        annotations = {"name": F("recipient_name"), "code": F("recipient_unique_id")}
+        django_values = ["sub_awardee_or_recipient_legal", "sub_awardee_or_recipient_uniqu"]
+        annotations = {"name": F("sub_awardee_or_recipient_legal"), "code": F("sub_awardee_or_recipient_uniqu")}
         queryset = self.common_db_query(base_queryset, django_filters, django_values).annotate(**annotations)
         lower_limit = self.pagination.lower_limit
         upper_limit = self.pagination.upper_limit

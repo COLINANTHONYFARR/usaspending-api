@@ -6,7 +6,7 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 
 from django.conf import settings
-from django.db.models import Sum
+from django.db.models import Sum, F
 from elasticsearch_dsl import A
 from elasticsearch_dsl.response import AggResponse
 from rest_framework.request import Request
@@ -28,7 +28,7 @@ from usaspending_api.common.helpers.generic_helper import (
     get_generic_filters_message,
     min_and_max_from_date_ranges,
 )
-from usaspending_api.common.helpers.orm_helpers import FiscalMonth, FiscalQuarter, FiscalYear
+from usaspending_api.common.helpers.orm_helpers import FiscalMonth, FiscalQuarter
 from usaspending_api.common.query_with_filters import QueryWithFilters
 from usaspending_api.common.validator.award_filter import AWARD_FILTER
 from usaspending_api.common.validator.pagination import PAGINATION
@@ -79,27 +79,34 @@ class SpendingOverTimeVisualizationViewSet(APIView):
 
     def database_data_layer_for_subawards(self) -> tuple:
         queryset = subaward_filter(self.filters)
-        obligation_column = "amount"
-        values = ["fy"]
+        obligation_column = "subaward_amount"
 
+        # Note: SubawardSearch already has an "fy" field that corresponds to the prime award's fiscal year.
+        #       This, however, needs "fy" to be the fiscal year of the sub_action_date (i.e. "sub_fiscal_year").
+        #       And so, Django gets confused simply aliasing it to "fy" as "fy" is already a field in the model.
+        #       To get around that, we're doing this little dance of annotate() and values().
+        queryset = queryset.annotate(prime_fy=F("fy"))
+
+        month_quarter_cols = []
         if self.group == "month":
-            queryset = queryset.annotate(month=FiscalMonth("action_date"), fy=FiscalYear("action_date"))
-            values.append("month")
-
+            queryset = queryset.annotate(month=FiscalMonth("sub_action_date"))
+            month_quarter_cols.append("month")
         elif self.group == "quarter":
-            queryset = queryset.annotate(quarter=FiscalQuarter("action_date"), fy=FiscalYear("action_date"))
-            values.append("quarter")
+            queryset = queryset.annotate(quarter=FiscalQuarter("sub_action_date"))
+            month_quarter_cols.append("quarter")
 
-        elif self.group == "fiscal_year":
-            queryset = queryset.annotate(fy=FiscalYear("action_date"))
-
+        first_values = ["sub_fiscal_year"] + month_quarter_cols
+        second_values = ["aggregated_amount"] + month_quarter_cols
+        second_values_dict = {"fy": F("sub_fiscal_year")}
+        order_by_cols = ["fy"] + month_quarter_cols
         queryset = (
-            queryset.values(*values)
+            queryset.values(*first_values)
             .annotate(aggregated_amount=Sum(obligation_column))
-            .order_by(*["{}".format(value) for value in values])
+            .values(*second_values, **second_values_dict)
+            .order_by(*order_by_cols)
         )
 
-        return queryset, values
+        return queryset, order_by_cols
 
     def apply_elasticsearch_aggregations(self, search: TransactionSearch) -> None:
         """
@@ -198,11 +205,11 @@ class SpendingOverTimeVisualizationViewSet(APIView):
         time_periods = self.filters.get("time_period", [default_time_period])
 
         if self.subawards:
-            db_results, values = self.database_data_layer_for_subawards()
+            db_results, order_by_cols = self.database_data_layer_for_subawards()
             results = bolster_missing_time_periods(
                 filter_time_periods=time_periods,
                 queryset=db_results,
-                date_range_type=values[-1],
+                date_range_type=order_by_cols[-1],
                 columns={"aggregated_amount": "aggregated_amount"},
             )
         else:

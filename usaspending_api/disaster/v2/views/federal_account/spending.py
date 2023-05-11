@@ -34,7 +34,7 @@ def construct_response(results: list, pagination: Pagination):
 
 
 class SpendingViewSet(SpendingMixin, FabaOutlayMixin, ElasticsearchAccountDisasterBase, PaginationMixin):
-    """ Returns disaster spending by federal account. """
+    """Returns disaster spending by federal account."""
 
     endpoint_doc = "usaspending_api/api_contracts/contracts/v2/disaster/federal_account/spending.md"
     agg_key = "financial_accounts_by_award.treasury_account_id"  # primary (tier-1) aggregation key
@@ -156,9 +156,11 @@ class SpendingViewSet(SpendingMixin, FabaOutlayMixin, ElasticsearchAccountDisast
                             + F("deobligations_recoveries_refund_pri_program_object_class_cpe"),
                         ),
                         default=Value(0),
+                        output_field=DecimalField(max_digits=23, decimal_places=2),
                     )
                 ),
                 0,
+                output_field=DecimalField(max_digits=23, decimal_places=2),
             ),
             "outlay": Coalesce(
                 Sum(
@@ -170,9 +172,11 @@ class SpendingViewSet(SpendingMixin, FabaOutlayMixin, ElasticsearchAccountDisast
                             + F("ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe"),
                         ),
                         default=Value(0),
+                        output_field=DecimalField(max_digits=23, decimal_places=2),
                     )
                 ),
                 0,
+                output_field=DecimalField(max_digits=23, decimal_places=2),
             ),
             "total_budgetary_resources": Coalesce(
                 Subquery(
@@ -188,17 +192,22 @@ class SpendingViewSet(SpendingMixin, FabaOutlayMixin, ElasticsearchAccountDisast
                         ),
                         deobligation=Func("deobligations_or_recoveries_or_refunds_from_prior_year_cpe", function="Sum"),
                         prior_year=Func("prior_year_paid_obligation_recoveries", function="Sum"),
+                        unobligated_adjustments=Func(
+                            "adjustments_to_unobligated_balance_brought_forward_fyb", function="Sum"
+                        ),
                     )
                     .annotate(
                         total_budget_authority=F("amount")
                         - F("unobligated_balance")
                         - F("deobligation")
                         - F("prior_year")
+                        - F("unobligated_adjustments")
                     )
                     .values("total_budget_authority"),
-                    output_field=DecimalField(),
+                    output_field=DecimalField(max_digits=23, decimal_places=2),
                 ),
                 0,
+                output_field=DecimalField(max_digits=23, decimal_places=2),
             ),
         }
 

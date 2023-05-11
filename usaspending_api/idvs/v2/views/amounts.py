@@ -23,8 +23,8 @@ child_award_sql = """
         ac.id as award_id
     from
         parent_award pap
-        inner join awards ap on ap.id = pap.award_id
-        inner join awards ac on ac.fpds_parent_agency_id = ap.fpds_agency_id and ac.parent_award_piid = ap.piid and
+        inner join vw_awards ap on ap.id = pap.award_id
+        inner join vw_awards ac on ac.fpds_parent_agency_id = ap.fpds_agency_id and ac.parent_award_piid = ap.piid and
             ac.type not like 'IDV%'
     where
         pap.{award_id_column} = '{award_id}'
@@ -35,8 +35,8 @@ grandchild_award_sql = """
     from
         parent_award pap
         inner join parent_award pac on pac.parent_award_id = pap.award_id
-        inner join awards ap on ap.id = pac.award_id
-        inner join awards ac on ac.fpds_parent_agency_id = ap.fpds_agency_id and ac.parent_award_piid = ap.piid and
+        inner join vw_awards ap on ap.id = pac.award_id
+        inner join vw_awards ac on ac.fpds_parent_agency_id = ap.fpds_agency_id and ac.parent_award_piid = ap.piid and
             ac.type not like 'IDV%'
 
     where
@@ -53,7 +53,7 @@ def fetch_account_details_idv(award_id, award_id_column) -> dict:
     grandchildren = execute_sql_to_ordered_dictionary(
         grandchild_award_sql.format(award_id=award_id, award_id_column=award_id_column)
     )
-    covid_defcs = DisasterEmergencyFundCode.objects.filter(group_name="covid_19").values_list("code", flat=True)
+    defcs = DisasterEmergencyFundCode.objects.all().values_list("code", flat=True)
 
     child_award_ids = []
     grandchild_award_ids = []
@@ -74,7 +74,7 @@ def fetch_account_details_idv(award_id, award_id_column) -> dict:
     child_total_outlay = 0
     child_total_obligations = 0
     for row in child_results:
-        if row["disaster_emergency_fund_code"] in covid_defcs:
+        if row["disaster_emergency_fund_code"] in defcs:
             child_total_outlay += row["total_outlay"]
             child_total_obligations += row["obligated_amount"]
         child_outlay_by_code.append({"code": row["disaster_emergency_fund_code"], "amount": row["total_outlay"]})
@@ -86,7 +86,7 @@ def fetch_account_details_idv(award_id, award_id_column) -> dict:
     grandchild_total_outlay = 0
     grandchild_total_obligations = 0
     for row in grandchild_results:
-        if row["disaster_emergency_fund_code"] in covid_defcs:
+        if row["disaster_emergency_fund_code"] in defcs:
             grandchild_total_outlay += row["total_outlay"]
             grandchild_total_obligations += row["obligated_amount"]
         grandchild_outlay_by_code.append({"code": row["disaster_emergency_fund_code"], "amount": row["total_outlay"]})
@@ -120,11 +120,11 @@ def fetch_idv_child_outlays(award_id: int, award_id_column) -> dict:
                 financial_accounts_by_awards faba
             INNER JOIN submission_attributes sa
                 ON faba.submission_id = sa.submission_id
-            INNER JOIN awards a
+            INNER JOIN vw_awards a
                 ON faba.award_id = a.id
                 AND a.date_signed >= '2019-10-01'
             INNER JOIN child_cte a2 ON faba.award_id = a2.award_id
-            INNER JOIN transaction_normalized tn ON tn.id = a.earliest_transaction_id
+            INNER JOIN vw_transaction_normalized tn ON tn.id = a.earliest_transaction_id
             WHERE sa.is_final_balances_for_fy AND sa.reporting_fiscal_year = tn.fiscal_year
             GROUP BY faba.award_id
         )

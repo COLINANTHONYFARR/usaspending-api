@@ -1,7 +1,7 @@
 import pytest
 
 from decimal import Decimal
-from model_mommy import mommy
+from model_bakery import baker
 
 from django.core.management import call_command
 from usaspending_api.reporting.models import ReportingAgencyOverview
@@ -29,10 +29,10 @@ def setup_test_data(db):
             "period_end_date": "2020-01-09",
         },
     ]
-    dsws = [mommy.make("submissions.DABSSubmissionWindowSchedule", **dabs_window) for dabs_window in dsws_dicts]
+    dsws = [baker.make("submissions.DABSSubmissionWindowSchedule", **dabs_window) for dabs_window in dsws_dicts]
 
     subs = [
-        mommy.make(
+        baker.make(
             "submissions.SubmissionAttributes",
             toptier_code="987",
             reporting_fiscal_year=2019,
@@ -41,7 +41,7 @@ def setup_test_data(db):
             quarter_format_flag=True,
             submission_window=dsws[0],
         ),
-        mommy.make(
+        baker.make(
             "submissions.SubmissionAttributes",
             toptier_code="123",
             reporting_fiscal_year=2020,
@@ -53,27 +53,27 @@ def setup_test_data(db):
     ]
 
     toptier_agencies = [
-        mommy.make("references.ToptierAgency", toptier_code="123", abbreviation="ABC", name="Test Agency"),
-        mommy.make("references.ToptierAgency", toptier_code="987", abbreviation="XYZ", name="Test Agency 2"),
+        baker.make("references.ToptierAgency", toptier_code="123", abbreviation="ABC", name="Test Agency"),
+        baker.make("references.ToptierAgency", toptier_code="987", abbreviation="XYZ", name="Test Agency 2"),
     ]
 
     agencies = [
-        mommy.make("references.Agency", toptier_agency=toptier_agencies[0], toptier_flag=True),
-        mommy.make("references.Agency", toptier_agency=toptier_agencies[1], toptier_flag=True),
+        baker.make("references.Agency", toptier_agency=toptier_agencies[0], toptier_flag=True),
+        baker.make("references.Agency", toptier_agency=toptier_agencies[1], toptier_flag=True),
     ]
 
     treas_accounts = [
-        mommy.make(
+        baker.make(
             "accounts.TreasuryAppropriationAccount",
             funding_toptier_agency=toptier_agencies[0],
             tas_rendering_label="tas-1-overview",
         ),
-        mommy.make(
+        baker.make(
             "accounts.TreasuryAppropriationAccount",
             funding_toptier_agency=toptier_agencies[0],
             tas_rendering_label="tas-2-overview",
         ),
-        mommy.make(
+        baker.make(
             "accounts.TreasuryAppropriationAccount",
             funding_toptier_agency=toptier_agencies[1],
             tas_rendering_label="tas-3-overview",
@@ -86,7 +86,7 @@ def setup_test_data(db):
         {"sub": subs[0], "treasury_account": treas_accounts[2], "total_resources": 15.5},
     ]
     for approp in approps:
-        mommy.make(
+        baker.make(
             "accounts.AppropriationAccountBalances",
             submission=approp["sub"],
             treasury_account_identifier=approp["treasury_account"],
@@ -117,7 +117,7 @@ def setup_test_data(db):
         },
     ]
     for reporting_tas in reporting_tases:
-        mommy.make(
+        baker.make(
             "reporting.ReportingAgencyTas",
             fiscal_year=reporting_tas["year"],
             fiscal_period=reporting_tas["period"],
@@ -153,7 +153,7 @@ def setup_test_data(db):
         },
     ]
     for sf133 in gtas_sf133s:
-        mommy.make(
+        baker.make(
             "references.GTASSF133Balances",
             fiscal_year=sf133["year"],
             fiscal_period=sf133["period"],
@@ -163,15 +163,17 @@ def setup_test_data(db):
 
     award_dicts = [
         {
+            "award_id": 1,
             "is_fpds": True,
-            "awarding_agency": agencies[0],
+            "awarding_agency_id": agencies[0].id,
             "type": "A",
             "piid": "123",
             "certified_date": "2019-12-15",
         },
         {
+            "award_id": 2,
             "is_fpds": False,
-            "awarding_agency": agencies[0],
+            "awarding_agency_id": agencies[0].id,
             "type": "08",
             "fain": "abc",
             "uri": "def",
@@ -179,43 +181,48 @@ def setup_test_data(db):
             "total_subsidy_cost": 1000,
         },
         {
+            "award_id": 3,
             "is_fpds": False,
-            "awarding_agency": agencies[0],
+            "awarding_agency_id": agencies[0].id,
             "type": "07",
             "fain": "abcdef",
             "certified_date": "2019-12-15",
             "total_subsidy_cost": 2000,
         },
     ]
-    award_list = [mommy.make("awards.Award", **award) for award in award_dicts]
+    award_list = [baker.make("search.AwardSearch", **award) for award in award_dicts]
     transaction_list = [
         {
+            "transaction_id": 1,
             "award": award_list[0],
             "fiscal_year": 2019,
             "action_date": "2018-11-15",
-            "awarding_agency": agencies[0],
+            "awarding_agency_id": agencies[0].id,
         },
         {
+            "transaction_id": 2,
             "award": award_list[0],
             "fiscal_year": 2019,
             "action_date": "2018-12-15",
-            "awarding_agency": agencies[0],
+            "awarding_agency_id": agencies[0].id,
         },
         {
+            "transaction_id": 3,
             "award": award_list[1],
             "fiscal_year": 2019,
             "action_date": "2018-10-15",
-            "awarding_agency": agencies[0],
+            "awarding_agency_id": agencies[0].id,
         },
         {
+            "transaction_id": 4,
             "award": award_list[2],
             "fiscal_year": 2019,
             "action_date": "2018-10-28",
-            "awarding_agency": agencies[0],
+            "awarding_agency_id": agencies[0].id,
         },
     ]
     for transaction in transaction_list:
-        mommy.make("awards.TransactionNormalized", **transaction)
+        baker.make("search.TransactionSearch", **transaction)
 
     faba_list = [
         {
@@ -268,7 +275,7 @@ def setup_test_data(db):
     ]
 
     for faba in faba_list:
-        mommy.make("awards.FinancialAccountsByAwards", **faba)
+        baker.make("awards.FinancialAccountsByAwards", **faba)
 
 
 def test_run_script(setup_test_data):

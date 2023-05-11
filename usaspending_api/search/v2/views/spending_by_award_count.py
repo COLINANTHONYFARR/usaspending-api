@@ -8,7 +8,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from elasticsearch_dsl import Q
 
-from usaspending_api.awards.v2.filters.filter_helpers import add_date_range_comparison_types
 from usaspending_api.awards.v2.filters.sub_award import subaward_filter
 from usaspending_api.awards.v2.lookups.lookups import all_award_types_mappings
 from usaspending_api.common.api_versioning import api_transformations, API_TRANSFORM_FUNCTIONS
@@ -57,12 +56,14 @@ class SpendingByAwardCountVisualizationViewSet(APIView):
         self.original_filters = request.data.get("filters")
         json_request = TinyShield(models).block(request.data)
         subawards = json_request["subawards"]
-        filters = add_date_range_comparison_types(
-            json_request.get("filters", None), subawards, gte_date_type="action_date", lte_date_type="date_signed"
-        )
-
+        filters = json_request.get("filters", None)
         if filters is None:
             raise InvalidParameterException("Missing required request parameters: 'filters'")
+
+        if not subawards and filters.get("time_period") is not None:
+            for time_period in filters["time_period"]:
+                time_period["gte_date_type"] = time_period.get("date_type", "action_date")
+                time_period["lte_date_type"] = time_period.get("date_type", "date_signed")
 
         if "award_type_codes" in filters and "no intersection" in filters["award_type_codes"]:
             # "Special case": there will never be results when the website provides this value
@@ -97,13 +98,13 @@ class SpendingByAwardCountVisualizationViewSet(APIView):
         queryset = (
             subaward_filter(filters)
             .filter(award_id__isnull=False)
-            .values("award_type")
-            .annotate(count=Count("subaward_id"))
+            .values("prime_award_group")
+            .annotate(count=Count("broker_subaward_id"))
         )
 
         results = {}
-        results["subgrants"] = sum([sub["count"] for sub in queryset if sub["award_type"] == "grant"])
-        results["subcontracts"] = sum([sub["count"] for sub in queryset if sub["award_type"] == "procurement"])
+        results["subgrants"] = sum([sub["count"] for sub in queryset if sub["prime_award_group"] == "grant"])
+        results["subcontracts"] = sum([sub["count"] for sub in queryset if sub["prime_award_group"] == "procurement"])
 
         return results
 

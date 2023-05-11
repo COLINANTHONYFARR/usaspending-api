@@ -167,28 +167,7 @@ Returns loan spending details of CFDA Programs receiving supplemental funding bu
 + `limit` (required, number)
 
 ## DEFC (enum[string])
-List of Disaster Emergency Fund (DEF) Codes (DEFC) defined by legislation at the time of writing
-
-### Members
-+ `A`
-+ `B`
-+ `C`
-+ `D`
-+ `E`
-+ `F`
-+ `G`
-+ `H`
-+ `I`
-+ `J`
-+ `K`
-+ `L`
-+ `M`
-+ `N`
-+ `O`
-+ `P`
-+ `Q`
-+ `R`
-+ `S`
-+ `T`
-+ `U`
-+ `9`
+List of Disaster Emergency Fund (DEF) Codes (DEFC) defined by legislation at the time of writing.
+When filtering on `award_type_codes` this will filter on File D records that have at least one File C with the provided DEFC
+and belong to CARES Act DEFC.
+A list of current DEFC can be found [here.](https://files.usaspending.gov/reference_data/def_codes.csv)

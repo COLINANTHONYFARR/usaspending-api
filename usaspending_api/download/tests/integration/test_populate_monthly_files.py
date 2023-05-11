@@ -5,7 +5,7 @@ import os
 
 from django.core.management import call_command
 from csv import reader
-from model_mommy import mommy
+from model_bakery import baker
 
 from usaspending_api.download.lookups import JOB_STATUS
 from usaspending_api.download.v2.download_column_historical_lookups import query_paths
@@ -34,7 +34,9 @@ def generate_contract_data(fiscal_year, i):
         "",
         "",  # "potential_total_value_of_award", "disaster_emergency_fund_codes_for_overall_award",
         "",
-        "",  # "outlayed_amount_funded_by_COVID-19_supplementals_for_overall_award", "obligated_amount_funded_by_COVID-19_supplementals_for_overall_award",
+        "",  # "outlayed_amount_from_COVID-19_supplementals_for_overall_award", "obligated_amount_from_COVID-19_supplementals_for_overall_award",
+        "",
+        "",  # "outlayed_amount_from_IIJA_supplemental_for_overall_award", "obligated_amount_from_IIJA_supplemental_for_overall_award",
         "",
         "",  # "action_date", "action_date_fiscal_year",
         f"05/07{fiscal_year}",
@@ -44,7 +46,7 @@ def generate_contract_data(fiscal_year, i):
         "",
         "001",
         "Test_Agency",
-        "001",  # "ordering_period_end_date", "solicitation_date", "awarding_agency_code", "awarding_agency_name", "awarding_sub_agency_code",
+        "001",  # "ordering_period_end_date", "solicitation_date", "awarding_agency_code", "awarding_toptier_agency_abbreviation", "awarding_sub_agency_code",
         "Test_Agency",
         "",
         "",
@@ -298,7 +300,7 @@ def generate_contract_data(fiscal_year, i):
         "",
         "",  # "highly_compensated_officer_4_name", "highly_compensated_officer_4_amount", "highly_compensated_officer_5_name",
         "",
-        "www.usaspending.gov/award/CONT_AWD_1_0_0",
+        f"www.usaspending.gov/award/CONT_AWD_{i}_0_0",
         f"05/07/{fiscal_year}",  # "highly_compensated_officer_5_amount", "usaspending_permalink", "last_modified_date"
     ]
 
@@ -322,14 +324,16 @@ def generate_assistance_data(fiscal_year, i):
         "",  # "total_loan_subsidy_cost", "disaster_emergency_fund_codes_for_overall_award",
         "",
         "",
-        "",  # "outlayed_amount_funded_by_COVID-19_supplementals_for_overall_award", "obligated_amount_funded_by_COVID-19_supplementals_for_overall_award","action_date",
+        "",  # "outlayed_amount_from_COVID-19_supplementals_for_overall_award", "obligated_amount_from_COVID-19_supplementals_for_overall_award",
         "",
+        "",  # "outlayed_amount_from_IIJA_supplemental_for_overall_award", "obligated_amount_from_IIJA_supplemental_for_overall_award",
         "",
+        "",  # "action_date",
         "",  # "action_date_fiscal_year", "period_of_performance_start_date", "period_of_performance_current_end_date",
         "001",
         "Test_Agency",
         "001",
-        "Test_Agency",  # "awarding_agency_code", "awarding_agency_name", "awarding_sub_agency_code", "awarding_sub_agency_name",
+        "Test_Agency",  # "awarding_agency_code", "awarding_toptier_agency_abbreviation", "awarding_sub_agency_code", "awarding_sub_agency_name",
         "",
         "",
         "",
@@ -397,7 +401,7 @@ def generate_assistance_data(fiscal_year, i):
         "",
         "",  # "highly_compensated_officer_4_name", "highly_compensated_officer_4_amount", "highly_compensated_officer_5_name",
         "",
-        "http://www.usaspending.gov/award/ASST_NON_2_0_0",
+        f"http://www.usaspending.gov/award/ASST_NON_{i}_0_0",
         f"05/07/{fiscal_year}",  # "highly_compensated_officer_5_amount", "usaspending_permalink", "last_modified_date"
     ]
 
@@ -405,18 +409,18 @@ def generate_assistance_data(fiscal_year, i):
 @pytest.fixture
 def monthly_download_data(db, monkeypatch):
     for js in JOB_STATUS:
-        mommy.make("download.JobStatus", job_status_id=js.id, name=js.name, description=js.desc)
+        baker.make("download.JobStatus", job_status_id=js.id, name=js.name, description=js.desc)
 
-    mommy.make("references.ToptierAgency", toptier_agency_id=1, toptier_code="001", name="Test_Agency")
-    mommy.make("references.Agency", pk=1, toptier_agency_id=1)
-    mommy.make("references.ToptierAgency", toptier_agency_id=2, toptier_code="002", name="Test_Agency 2")
-    mommy.make("references.Agency", pk=2, toptier_agency_id=2)
+    baker.make("references.ToptierAgency", toptier_agency_id=1, toptier_code="001", name="Test_Agency")
+    baker.make("references.Agency", pk=1, toptier_agency_id=1)
+    baker.make("references.ToptierAgency", toptier_agency_id=2, toptier_code="002", name="Test_Agency 2")
+    baker.make("references.Agency", pk=2, toptier_agency_id=2)
     i = 1
     for fiscal_year in range(2001, 2021):
-        mommy.make(
-            "awards.Award",
-            id=i,
-            generated_unique_award_id="CONT_AWD_1_0_0",
+        baker.make(
+            "search.AwardSearch",
+            award_id=i,
+            generated_unique_award_id=f"CONT_AWD_{i}_0_0",
             is_fpds=True,
             type="B",
             type_description="Purchase Order",
@@ -426,28 +430,10 @@ def monthly_download_data(db, monkeypatch):
             latest_transaction_id=i,
             fiscal_year=fiscal_year,
         )
-        mommy.make(
-            "awards.TransactionFPDS",
-            transaction_id=i,
-            detached_award_procurement_id=i,
-            detached_award_proc_unique=f"test{i}",
-            piid=f"piid{i}",
-            agency_id=1,
-            awarding_sub_tier_agency_c="001",
-            awarding_sub_tier_agency_n="Test_Agency",
-            awarding_agency_code="001",
-            awarding_agency_name="Test_Agency",
-            parent_award_id=f"000{i}",
-            award_modification_amendme="1",
-            contract_award_type="B",
-            contract_award_type_desc="Contract",
-            created_at=datetime.datetime(fiscal_year, 5, 7),
-            updated_at=datetime.datetime(fiscal_year, 5, 7),
-        )
-        mommy.make(
-            "awards.TransactionNormalized",
+        baker.make(
+            "search.TransactionSearch",
             award_id=i,
-            id=i,
+            transaction_id=i,
             is_fpds=True,
             transaction_unique_id=i,
             usaspending_unique_transaction_id="",
@@ -457,13 +443,10 @@ def monthly_download_data(db, monkeypatch):
             period_of_performance_current_end_date=datetime.datetime(fiscal_year, 5, 7),
             action_date=datetime.datetime(fiscal_year, 5, 7),
             federal_action_obligation=100,
-            modification_number="",
-            description="a description",
-            drv_award_transaction_usaspend=1,
-            drv_current_total_award_value_amount_adjustment=1,
-            drv_potential_total_award_value_amount_adjustment=1,
+            modification_number="1",
+            transaction_description="a description",
             last_modified_date=datetime.datetime(fiscal_year, 5, 7),
-            certified_date=datetime.datetime(fiscal_year, 5, 7),
+            award_certified_date=datetime.datetime(fiscal_year, 5, 7),
             create_date=datetime.datetime(fiscal_year, 5, 7),
             update_date=datetime.datetime(fiscal_year, 5, 7),
             fiscal_year=fiscal_year,
@@ -473,13 +456,21 @@ def monthly_download_data(db, monkeypatch):
             face_value_loan_guarantee=100.0,
             funding_amount=100.0,
             non_federal_funding_amount=100.0,
-            unique_award_key=1,
+            generated_unique_award_id=f"CONT_AWD_{i}_0_0",
             business_categories=[],
+            detached_award_proc_unique=f"test{i}",
+            piid=f"piid{i}",
+            agency_id=1,
+            awarding_sub_tier_agency_c="001",
+            awarding_subtier_agency_abbreviation="Test_Agency",
+            awarding_agency_code="001",
+            awarding_toptier_agency_abbreviation="Test_Agency",
+            parent_award_id=f"000{i}",
         )
-        mommy.make(
-            "awards.Award",
-            id=i + 100,
-            generated_unique_award_id="ASST_NON_2_0_0",
+        baker.make(
+            "search.AwardSearch",
+            award_id=i + 100,
+            generated_unique_award_id=f"ASST_NON_{i}_0_0",
             is_fpds=False,
             type="02",
             type_description="Block Grant",
@@ -489,19 +480,11 @@ def monthly_download_data(db, monkeypatch):
             latest_transaction_id=i + 100,
             fiscal_year=fiscal_year,
         )
-        mommy.make(
-            "awards.TransactionFABS",
-            transaction_id=i + 100,
-            fain=f"fain{i}",
-            awarding_agency_code="001",
-            awarding_sub_tier_agency_c=1,
-            awarding_agency_name="Test_Agency",
-            awarding_sub_tier_agency_n="Test_Agency",
-        )
-        mommy.make(
-            "awards.TransactionNormalized",
+        baker.make(
+            "search.TransactionSearch",
             award_id=i + 100,
-            id=i + 100,
+            generated_unique_award_id=f"ASST_NON_{i}_0_0",
+            transaction_id=i + 100,
             is_fpds=False,
             transaction_unique_id=i + 100,
             usaspending_unique_transaction_id="",
@@ -512,12 +495,9 @@ def monthly_download_data(db, monkeypatch):
             action_date=datetime.datetime(fiscal_year, 5, 7),
             federal_action_obligation=100,
             modification_number=f"{i+100}",
-            description="a description",
-            drv_award_transaction_usaspend=1,
-            drv_current_total_award_value_amount_adjustment=1,
-            drv_potential_total_award_value_amount_adjustment=1,
+            transaction_description="a description",
             last_modified_date=datetime.datetime(fiscal_year, 5, 7),
-            certified_date=datetime.datetime(fiscal_year, 5, 7),
+            award_certified_date=datetime.datetime(fiscal_year, 5, 7),
             create_date=datetime.datetime(fiscal_year, 5, 7),
             update_date=datetime.datetime(fiscal_year, 5, 7),
             fiscal_year=fiscal_year,
@@ -527,7 +507,11 @@ def monthly_download_data(db, monkeypatch):
             face_value_loan_guarantee=100.0,
             funding_amount=100.0,
             non_federal_funding_amount=100.0,
-            unique_award_key=i + 100,
+            fain=f"fain{i}",
+            awarding_agency_code="001",
+            awarding_sub_tier_agency_c=1,
+            awarding_toptier_agency_abbreviation="Test_Agency",
+            awarding_subtier_agency_abbreviation="Test_Agency",
         )
         i += 1
     monkeypatch.setattr("usaspending_api.settings.MONTHLY_DOWNLOAD_S3_BUCKET_NAME", "whatever")
@@ -567,6 +551,7 @@ def test_specific_agency(client, monthly_download_data, monkeypatch):
         row_count = 0
         for row in csv_reader:
             if row_count == 0:
+                # 63 is the character limit for column names
                 assert row == [s[:63] for s in query_paths["transaction_search"]["d1"].keys()]
             else:
                 assert row == contract_data
@@ -581,6 +566,7 @@ def test_specific_agency(client, monthly_download_data, monkeypatch):
         row_count = 0
         for row in csv_reader:
             if row_count == 0:
+                # 63 is the character limit for column names
                 assert row == [s[:63] for s in query_paths["transaction_search"]["d2"].keys()]
             else:
                 assert row == assistance_data

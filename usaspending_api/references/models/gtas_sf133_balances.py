@@ -1,4 +1,5 @@
 from django.db import models
+from django_cte import CTEManager
 
 
 class GTASSF133Balances(models.Model):
@@ -17,6 +18,7 @@ class GTASSF133Balances(models.Model):
     gross_outlay_amount_by_tas_cpe = models.DecimalField(max_digits=23, decimal_places=2)
     unobligated_balance_cpe = models.DecimalField(max_digits=23, decimal_places=2)
     total_budgetary_resources_cpe = models.DecimalField(max_digits=23, decimal_places=2)
+    status_of_budgetary_resources_total_cpe = models.DecimalField(max_digits=23, decimal_places=2, default=0.0)
     disaster_emergency_fund = models.ForeignKey(
         "references.DisasterEmergencyFundCode",
         models.DO_NOTHING,
@@ -36,6 +38,11 @@ class GTASSF133Balances(models.Model):
     update_date = models.DateTimeField(auto_now=True)
     anticipated_prior_year_obligation_recoveries = models.DecimalField(max_digits=23, decimal_places=2)
     prior_year_paid_obligation_recoveries = models.DecimalField(max_digits=23, decimal_places=2)
+    adjustments_to_unobligated_balance_brought_forward_fyb = models.DecimalField(
+        max_digits=23, decimal_places=2, default=0.00
+    )
+
+    objects = CTEManager()
 
     class Meta:
         managed = True

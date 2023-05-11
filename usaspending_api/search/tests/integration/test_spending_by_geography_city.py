@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from model_mommy import mommy
+from model_bakery import baker
 from rest_framework import status
 
 from usaspending_api.search.tests.data.utilities import setup_elasticsearch_test
@@ -9,34 +9,37 @@ from usaspending_api.search.tests.data.utilities import setup_elasticsearch_test
 
 @pytest.fixture
 def award_data_fixture(db):
-    mommy.make("awards.TransactionNormalized", id=1, action_date="2010-10-01", award_id=1, is_fpds=True, type="A")
-    mommy.make(
-        "awards.TransactionFPDS",
+    baker.make(
+        "search.TransactionSearch",
+        is_fpds=True,
         transaction_id=1,
-        legal_entity_city_name="BURBANK",
-        legal_entity_country_code="USA",
-        legal_entity_state_code="CA",
-        legal_entity_county_code="000",
-        piid="piiiiid",
-        place_of_perform_city_name="AUSTIN",
-        place_of_performance_state="TX",
-        place_of_perform_country_c="USA",
-    )
-    mommy.make("awards.Award", id=1, is_fpds=True, latest_transaction_id=1, piid="piiiiid", type="A")
-    mommy.make(
-        "awards.Subaward",
-        id=1,
         award_id=1,
-        amount=123.45,
-        pop_country_code="USA",
-        pop_state_code="TX",
-        pop_city_name="HOUSTON",
+        action_date="2010-10-01",
+        type="A",
+        recipient_location_city_name="BURBANK",
         recipient_location_country_code="USA",
         recipient_location_state_code="CA",
+        recipient_location_county_code="000",
+        piid="piiiiid",
+        pop_city_name="AUSTIN",
+        pop_state_code="TX",
+        pop_country_code="USA",
     )
-    mommy.make("references.PopCounty", state_name="California", county_number="000", latest_population=2403)
-    mommy.make("recipient.StateData", id="06-2020", fips="06", code="CA", name="California")
-    mommy.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
+    baker.make("search.AwardSearch", award_id=1, is_fpds=True, latest_transaction_id=1, piid="piiiiid", type="A")
+    baker.make(
+        "search.SubawardSearch",
+        broker_subaward_id=1,
+        award_id=1,
+        subaward_amount=123.45,
+        sub_place_of_perform_country_co="USA",
+        sub_place_of_perform_state_code="TX",
+        sub_place_of_perform_city_name="HOUSTON",
+        sub_legal_entity_country_code="USA",
+        sub_legal_entity_state_code="CA",
+    )
+    baker.make("references.PopCounty", state_name="California", county_number="000", latest_population=2403)
+    baker.make("recipient.StateData", id="06-2020", fips="06", code="CA", name="California")
+    baker.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
 
 
 def test_geocode_filter_by_city(client, monkeypatch, elasticsearch_transaction_index, award_data_fixture):

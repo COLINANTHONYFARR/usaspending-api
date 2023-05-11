@@ -65,6 +65,7 @@ SELECT
   "pop_zip5",
   "pop_congressional_code",
   "pop_congressional_population",
+  "pop_congressional_code_current",
   "pop_city_name",
   "recipient_location_country_code",
   "recipient_location_country_name",
@@ -77,6 +78,7 @@ SELECT
   "recipient_location_county_population",
   "recipient_location_congressional_code",
   "recipient_location_congressional_population",
+  "recipient_location_congressional_code_current",
   "recipient_location_zip5",
   "recipient_location_city_name",
   "recipient_hash",
@@ -92,9 +94,13 @@ SELECT
   "funding_agency_id",
   "awarding_toptier_agency_id",
   "funding_toptier_agency_id",
+  "awarding_agency_code",
   "awarding_toptier_agency_name",
+  "funding_agency_code",
   "funding_toptier_agency_name",
+  "awarding_sub_tier_agency_c",
   "awarding_subtier_agency_name",
+  "funding_sub_tier_agency_co",
   "funding_subtier_agency_name",
   "awarding_office_code",
   "awarding_office_name",
@@ -106,7 +112,7 @@ SELECT
   "funding_subtier_agency_abbreviation",
   "tas_paths",
   "tas_components",
-  "federal_accounts",
+  "federal_accounts"::JSON,
   "disaster_emergency_fund_codes"
 FROM "transaction_search"
 WHERE "action_date" >= '2007-10-01';

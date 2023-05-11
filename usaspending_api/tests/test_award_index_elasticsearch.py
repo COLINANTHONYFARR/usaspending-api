@@ -1,68 +1,99 @@
 import pytest
 
-from model_mommy import mommy
+from model_bakery import baker
 
 
 @pytest.fixture
 def award_data_fixture(db):
-    mommy.make("awards.TransactionNormalized", id=1, award_id=1, action_date="2010-10-01", is_fpds=True, type="A")
-    mommy.make(
-        "awards.TransactionFPDS",
+    baker.make(
+        "search.TransactionSearch",
+        is_fpds=True,
         transaction_id=1,
-        legal_entity_zip5="abcde",
+        award_id=1,
+        action_date="2010-10-01",
+        type="A",
+        recipient_location_zip5="abcde",
         piid="IND12PB00323",
-        legal_entity_county_code="059",
-        legal_entity_state_code="VA",
-        legal_entity_congressional="11",
-        legal_entity_country_code="USA",
-        place_of_performance_state="VA",
-        place_of_performance_congr="11",
-        place_of_perform_country_c="USA",
-        naics="331122",
+        recipient_location_county_code="059",
+        recipient_location_state_code="VA",
+        recipient_location_congressional_code="11",
+        recipient_location_country_code="USA",
+        pop_state_code="VA",
+        pop_congressional_code="11",
+        place_of_performance_code="USA",
+        naics_code="331122",
         product_or_service_code="1510",
         type_set_aside="8AN",
         type_of_contract_pricing="2",
         extent_competed="F",
     )
-    mommy.make("awards.TransactionNormalized", id=2, award_id=2, action_date="2016-10-01", is_fpds=False, type="02")
-    mommy.make("awards.TransactionFABS", transaction_id=2, fain="P063P100612", cfda_number="84.063")
-    mommy.make("references.ToptierAgency", toptier_agency_id=1, name="Department of Transportation")
-    mommy.make("references.SubtierAgency", subtier_agency_id=1, name="Department of Transportation")
-    mommy.make("references.Agency", id=1, toptier_agency_id=1, subtier_agency_id=1)
-    mommy.make(
-        "awards.Award",
-        id=1,
+    baker.make(
+        "search.TransactionSearch",
+        is_fpds=False,
+        transaction_id=2,
+        award_id=2,
+        action_date="2016-10-01",
+        type="02",
+        fain="P063P100612",
+        cfda_number="84.063",
+    )
+    baker.make("references.ToptierAgency", toptier_agency_id=1, name="Department of Transportation")
+    baker.make("references.SubtierAgency", subtier_agency_id=1, name="Department of Transportation")
+    baker.make("references.Agency", id=1, toptier_agency_id=1, subtier_agency_id=1)
+    baker.make(
+        "search.AwardSearch",
+        award_id=1,
         latest_transaction_id=1,
         is_fpds=True,
         type="A",
         piid="IND12PB00323",
+        display_award_id="IND12PB00323",
         description="pop tarts and assorted cereals",
         total_obligation=500000.00,
         date_signed="2010-10-1",
         awarding_agency_id=1,
         funding_agency_id=1,
+        action_date="2010-10-1",
+        recipient_location_county_code="059",
+        recipient_location_state_code="VA",
+        recipient_location_congressional_code="11",
+        recipient_location_country_code="USA",
+        pop_state_code="VA",
+        pop_congressional_code="11",
+        pop_country_code="USA",
+        naics_code="331122",
+        product_or_service_code="1510",
+        type_set_aside="8AN",
+        type_of_contract_pricing="2",
+        extent_competed="F",
+        tas_paths="{aid=097main=4930ata=sub=000bpoa=epoa=a=X}",
+        funding_toptier_agency_name="Department of Transportation",
+        disaster_emergency_fund_codes="{L}",
     )
-    mommy.make(
-        "awards.Award",
-        id=2,
+    baker.make(
+        "search.AwardSearch",
+        award_id=2,
         latest_transaction_id=2,
         is_fpds=False,
         type="02",
         fain="P063P100612",
+        display_award_id="P063P100612",
+        cfda_number="84.063",
         total_obligation=1000000.00,
         date_signed="2016-10-1",
+        action_date="2016-10-1",
     )
-    mommy.make(
+    baker.make(
         "accounts.FederalAccount", id=1, parent_toptier_agency_id=1, agency_identifier="1", main_account_code="0001"
     )
-    mommy.make(
+    baker.make(
         "accounts.TreasuryAppropriationAccount",
         treasury_account_identifier=1,
         agency_id="097",
         main_account_code="4930",
         federal_account_id=1,
     )
-    mommy.make(
+    baker.make(
         "submissions.SubmissionAttributes",
         submission_id=1,
         reporting_fiscal_year=2020,
@@ -72,7 +103,7 @@ def award_data_fixture(db):
         quarter_format_flag=True,
         submission_window_id=2020121,
     )
-    mommy.make(
+    baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         id=2020121,
         submission_fiscal_year=2020,
@@ -81,8 +112,8 @@ def award_data_fixture(db):
         period_start_date="2020-04-21",
         submission_reveal_date="2020-04-30",
     )
-    code = mommy.make("references.DisasterEmergencyFundCode", code="L", group_name="covid_19")
-    mommy.make(
+    code = baker.make("references.DisasterEmergencyFundCode", code="L", group_name="covid_19")
+    baker.make(
         "awards.FinancialAccountsByAwards",
         financial_accounts_by_awards_id=1,
         award_id=1,
@@ -92,7 +123,7 @@ def award_data_fixture(db):
         gross_outlay_amount_by_award_cpe=100,
         transaction_obligated_amount=100,
     )
-    mommy.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
+    baker.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
 
 
 def create_query(should) -> dict:

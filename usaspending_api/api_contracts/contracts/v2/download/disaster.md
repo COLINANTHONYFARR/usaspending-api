@@ -5,7 +5,7 @@ HOST: https://api.usaspending.gov
 
 ## POST
 
-Creates a new download job for the requested account and award. Returns a link to a zipped file containing the generated data files.
+Creates a new download job for the requested COVID-19 related account and award. Returns a link to a zipped file containing the generated data files.
 
 + Request (application/json)
     + Attributes (object)
@@ -62,12 +62,4 @@ Creates a new download job for the requested account and award. Returns a link t
 ## DEFC (enum[string])
 List of Disaster Emergency Fund (DEF) Codes (DEFC) defined by legislation at the time of writing.
 Currently, the download is limited to either All COVID-19 DEFC or a single COVID-19 DEFC.
-
-### Members
-+ `L`
-+ `M`
-+ `N`
-+ `O`
-+ `P`
-+ `U`
-+ `V`
+A list of current DEFC can be found [here.](https://files.usaspending.gov/reference_data/def_codes.csv)

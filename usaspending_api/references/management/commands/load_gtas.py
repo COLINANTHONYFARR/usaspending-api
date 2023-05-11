@@ -3,7 +3,7 @@ import logging
 from django.core.management.base import BaseCommand
 from django.db import connections, transaction
 
-from usaspending_api.common.etl import mixins
+from usaspending_api.common.etl.postgres import mixins
 from usaspending_api.etl.broker_etl_helpers import dictfetchall
 from usaspending_api.references.models import GTASSF133Balances
 
@@ -11,6 +11,7 @@ logger = logging.getLogger("script")
 
 DERIVED_COLUMNS = {
     "anticipated_prior_year_obligation_recoveries": [1033],
+    "adjustments_to_unobligated_balance_brought_forward_fyb": [1020],
     "borrowing_authority_amount": [1340, 1440],
     "budget_authority_appropriation_amount_cpe": [1160, 1180, 1260, 1280],
     "budget_authority_unobligated_balance_brought_forward_cpe": [1000],
@@ -23,6 +24,7 @@ DERIVED_COLUMNS = {
     "spending_authority_from_offsetting_collections_amount": [1750, 1850],
     "total_budgetary_resources_cpe": [1910],
     "unobligated_balance_cpe": [2490],
+    "status_of_budgetary_resources_total_cpe": [2500],
 }
 
 INVERTED_DERIVED_COLUMNS = {

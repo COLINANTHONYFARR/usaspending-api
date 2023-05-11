@@ -1,4 +1,3 @@
-import json
 import logging
 from decimal import Decimal
 
@@ -59,7 +58,7 @@ def route_agency_spending_backend(**initkwargs):
 
 
 class SpendingByAgencyViewSet(PaginationMixin, SpendingMixin, FabaOutlayMixin, ElasticsearchAccountDisasterBase):
-    """ Returns disaster spending by agency. """
+    """Returns disaster spending by agency."""
 
     endpoint_doc = "usaspending_api/api_contracts/contracts/v2/disaster/agency/spending.md"
     required_filters = ["def_codes", "award_type_codes", "query"]
@@ -138,9 +137,11 @@ class SpendingByAgencyViewSet(PaginationMixin, SpendingMixin, FabaOutlayMixin, E
                             + F("deobligations_recoveries_refund_pri_program_object_class_cpe"),
                         ),
                         default=Value(0),
+                        output_field=DecimalField(max_digits=23, decimal_places=2),
                     )
                 ),
                 0,
+                output_field=DecimalField(max_digits=23, decimal_places=2),
             ),
             "outlay": Coalesce(
                 Sum(
@@ -152,9 +153,11 @@ class SpendingByAgencyViewSet(PaginationMixin, SpendingMixin, FabaOutlayMixin, E
                             + F("ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe"),
                         ),
                         default=Value(0),
+                        output_field=DecimalField(max_digits=23, decimal_places=2),
                     )
                 ),
                 0,
+                output_field=DecimalField(max_digits=23, decimal_places=2),
             ),
         }
 
@@ -192,17 +195,22 @@ class SpendingByAgencyViewSet(PaginationMixin, SpendingMixin, FabaOutlayMixin, E
                         ),
                         deobligation=Func("deobligations_or_recoveries_or_refunds_from_prior_year_cpe", function="Sum"),
                         prior_year=Func("prior_year_paid_obligation_recoveries", function="Sum"),
+                        unobligated_adjustments=Func(
+                            "adjustments_to_unobligated_balance_brought_forward_fyb", function="Sum"
+                        ),
                     )
                     .annotate(
                         total_budget_authority=F("amount")
                         - F("unobligated_balance")
                         - F("deobligation")
                         - F("prior_year")
+                        - F("unobligated_adjustments")
                     )
                     .values("total_budget_authority"),
-                    output_field=DecimalField(),
+                    output_field=DecimalField(max_digits=23, decimal_places=2),
                 ),
                 0,
+                output_field=DecimalField(max_digits=23, decimal_places=2),
             ),
             "link": Exists(SubmissionAttributes.objects.filter(toptier_code=OuterRef("toptier_code"))),
         }
@@ -232,26 +240,37 @@ class SpendingBySubtierAgencyViewSet(ElasticsearchSpendingPaginationMixin, Elast
     ]
     agg_key = "funding_toptier_agency_agg_key"  # primary (tier-1) aggregation key
     sub_agg_key = "funding_subtier_agency_agg_key"  # secondary (tier-2) sub-aggregation key
+    top_hits_fields = ["funding_toptier_agency_name", "funding_toptier_agency_code", "funding_agency_id"]
+    sub_top_hits_fields = ["funding_subtier_agency_name", "funding_subtier_agency_code", "funding_agency_id"]
 
     def build_elasticsearch_result(self, info_buckets: List[dict]) -> List[dict]:
         results = []
         for bucket in info_buckets:
-            result = self._build_json_result(bucket)
+            result = self._build_json_result(bucket, child=False)
             child_info_buckets = bucket.get(self.sub_agg_group_name, {}).get("buckets", [])
             children = []
             for child_bucket in child_info_buckets:
-                children.append(self._build_json_result(child_bucket))
+                children.append(self._build_json_result(child_bucket, child=True))
             result["children"] = children
             results.append(result)
 
         return results
 
-    def _build_json_result(self, bucket: dict):
-        info = json.loads(bucket.get("key"))
+    def _build_json_result(self, bucket: dict, child: bool):
+        agency_id = None
+        tier = "sub" if child else "top"
+        tid = Agency.objects.filter(
+            id=bucket["dim_metadata"]["hits"]["hits"][0]["_source"]["funding_agency_id"]
+        ).first()
+        if tid:
+            toptier_id = tid.toptier_agency_id
+            aid = Agency.objects.filter(toptier_agency_id=toptier_id).order_by("-toptier_flag", "-id").first()
+            if aid:
+                agency_id = aid.id
         return {
-            "id": info["id"],
-            "code": info["code"],
-            "description": info["name"],
+            "id": agency_id,
+            "code": bucket.get("key"),
+            "description": bucket["dim_metadata"]["hits"]["hits"][0]["_source"][f"funding_{tier}tier_agency_name"],
             # the count of distinct awards contributing to the totals
             "award_count": int(bucket.get("doc_count", 0)),
             **{

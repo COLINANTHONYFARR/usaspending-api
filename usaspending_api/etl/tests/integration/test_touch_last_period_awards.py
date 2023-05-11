@@ -1,13 +1,15 @@
+from itertools import cycle
+
 import pytest
 import io
 
 from datetime import datetime, timezone, timedelta
 from django.core.management import call_command
-from model_mommy import mommy
+from model_bakery import baker
 
 from usaspending_api.awards.models import Award
 from usaspending_api.broker.models import ExternalDataType
-
+from usaspending_api.search.models import AwardSearch
 
 OLD_DATE = "2020-04-05"
 SCRIPT_NAME = "touch_last_period_awards"
@@ -15,45 +17,53 @@ SCRIPT_NAME = "touch_last_period_awards"
 
 @pytest.fixture
 def award_data(db):
-    defc = mommy.make("references.DisasterEmergencyFundCode", code="M", group_name="covid_19")
+    defc = baker.make("references.DisasterEmergencyFundCode", code="M", group_name="covid_19")
 
     award_id = 987
 
     awards = [
-        mommy.make("awards.Award", id=award_id),
-        *mommy.make("awards.Award", _quantity=9),
+        baker.make("search.AwardSearch", award_id=award_id, action_date="2020-01-01"),
+        *baker.make(
+            "search.AwardSearch", award_id=cycle([1, 2, 3, 4, 5, 6, 7, 8, 9]), _quantity=9, action_date="2020-01-01"
+        ),
     ]
 
     for index, award in enumerate(awards):
         # Create faba records associated with the latest closed monthly and quarterly submissions
         if index % 2 == 0:
-            mommy.make("awards.FinancialAccountsByAwards", submission_id=11, award=award, disaster_emergency_fund=defc)
+            baker.make("awards.FinancialAccountsByAwards", submission_id=11, award=award, disaster_emergency_fund=defc)
         else:
-            mommy.make("awards.FinancialAccountsByAwards", submission_id=21, award=award, disaster_emergency_fund=defc)
-        Award.objects.filter(pk=award.id).update(update_date=OLD_DATE)  # convoluted line to sidestep auto_now()
+            baker.make("awards.FinancialAccountsByAwards", submission_id=21, award=award, disaster_emergency_fund=defc)
+        AwardSearch.objects.filter(award_id=award.award_id).update(
+            update_date=OLD_DATE
+        )  # convoluted line to sidestep auto_now()
 
     yield award_id
 
 
 @pytest.fixture
 def award_data_old_and_new(db):
-    defc = mommy.make("references.DisasterEmergencyFundCode", code="M", group_name="covid_19")
+    defc = baker.make("references.DisasterEmergencyFundCode", code="M", group_name="covid_19")
 
     award_id_too_old = 988
     award_id_too_new = 989
 
     awards = [
-        mommy.make("awards.Award", id=award_id_too_old),
-        mommy.make("awards.Award", id=award_id_too_new),
-        *mommy.make("awards.Award", _quantity=9),
+        baker.make("search.AwardSearch", award_id=award_id_too_old, action_date="2020-01-01"),
+        baker.make("search.AwardSearch", award_id=award_id_too_new, action_date="2020-01-01"),
+        *baker.make(
+            "search.AwardSearch", award_id=cycle([1, 2, 3, 4, 5, 6, 7, 8, 9]), _quantity=9, action_date="2020-01-01"
+        ),
     ]
 
     for index, award in enumerate(awards):
         if index % 2 == 0:
-            mommy.make("awards.FinancialAccountsByAwards", submission_id=10, award=award, disaster_emergency_fund=defc)
+            baker.make("awards.FinancialAccountsByAwards", submission_id=10, award=award, disaster_emergency_fund=defc)
         else:
-            mommy.make("awards.FinancialAccountsByAwards", submission_id=12, award=award, disaster_emergency_fund=defc)
-        Award.objects.filter(pk=award.id).update(update_date=OLD_DATE)  # convoluted line to sidestep auto_now()
+            baker.make("awards.FinancialAccountsByAwards", submission_id=12, award=award, disaster_emergency_fund=defc)
+        AwardSearch.objects.filter(award_id=award.award_id).update(
+            update_date=OLD_DATE
+        )  # convoluted line to sidestep auto_now()
 
     yield award_id_too_old, award_id_too_new
 
@@ -61,7 +71,7 @@ def award_data_old_and_new(db):
 @pytest.fixture
 def load_date(db):
     data_type = ExternalDataType.objects.get(external_data_type_id=120)
-    mommy.make("broker.ExternalDataLoadDate", external_data_type=data_type, last_load_date=datetime(2000, 1, 31))
+    baker.make("broker.ExternalDataLoadDate", external_data_type=data_type, last_load_date=datetime(2000, 1, 31))
 
 
 def test_awards_updated(load_date, submissions, award_data):

@@ -2,7 +2,7 @@ import json
 import pytest
 from datetime import datetime
 
-from model_mommy import mommy
+from model_bakery import baker
 from rest_framework import status
 
 from usaspending_api.awards.v2.lookups.lookups import all_award_types_mappings
@@ -12,9 +12,24 @@ from usaspending_api.search.tests.data.utilities import setup_elasticsearch_test
 
 @pytest.fixture
 def award_data_fixture():
-    mommy.make("awards.TransactionNormalized", id=2)
-    mommy.make(
-        "awards.Award",
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=2,
+        transaction_unique_id="A000_8900_DECF0000058_-NONE-",
+        action_date="2009-09-10",
+        award_id=48518634,
+        fiscal_year=2009,
+        generated_unique_award_id="ASST_NON_DECF0000058_8900",
+        is_fpds=False,
+        type="07",
+        type_description="DIRECT LOAN (E)",
+        award_category="loans",
+        fain="DECF0000058",
+        piid=None,
+        uri=None,
+    )
+    baker.make(
+        "search.AwardSearch",
         base_and_all_options_value=None,
         base_exercised_options_val=None,
         category="loans",
@@ -29,7 +44,7 @@ def award_data_fixture():
         fpds_parent_agency_id=None,
         funding_agency_id=None,
         generated_unique_award_id="ASST_NON_DECF0000058_8900",
-        id=48518634,
+        award_id=48518634,
         is_fpds=False,
         last_modified_date="2018-08-02",
         latest_transaction_id=2,
@@ -48,6 +63,7 @@ def award_data_fixture():
         type="07",
         type_description="DIRECT LOAN (E)",
         uri=None,
+        action_date="2018-10-01",
     )
 
 
@@ -118,16 +134,16 @@ def test_spending_by_award_no_intersection(client, monkeypatch, elasticsearch_aw
 
 @pytest.mark.django_db
 def test_spending_by_award_subawards_no_intersection(client):
-    mommy.make("awards.Award", id=90)
-    mommy.make(
-        "awards.Subaward",
-        id=9999,
-        award_type="grant",
+    baker.make("search.AwardSearch", award_id=90)
+    baker.make(
+        "search.SubawardSearch",
+        broker_subaward_id=9999,
+        prime_award_group="grant",
         prime_award_type="02",
         award_id=90,
         awarding_toptier_agency_name="Toptier Agency 1",
         awarding_toptier_agency_abbreviation="TA1",
-        amount=10,
+        subaward_amount=10,
     )
 
     request = {
@@ -195,9 +211,9 @@ def awards_over_different_date_ranges_with_different_counts():
             award_id += 1
             award_type_list = all_award_types_mappings[award_category]
             award_type = award_type_list[award_id % len(award_type_list)]
-            mommy.make(
-                "awards.Award",
-                id=award_id,
+            baker.make(
+                "search.AwardSearch",
+                award_id=award_id,
                 latest_transaction_id=award_id + 1000,
                 type=award_type,
                 category=award_category,
@@ -205,14 +221,16 @@ def awards_over_different_date_ranges_with_different_counts():
                 uri=None,
                 fain=None,
                 date_signed=date_range["date_signed"],
-            )
-            mommy.make(
-                "awards.TransactionNormalized",
-                id=award_id + 1000,
-                award_id=award_id,
                 action_date=date_range["action_date"],
             )
-            mommy.make("awards.TransactionFPDS", transaction_id=award_id + 1000, pulled_from=None)
+            baker.make(
+                "search.TransactionSearch",
+                transaction_id=award_id + 1000,
+                award_id=award_id,
+                action_date=date_range["action_date"],
+                is_fpds=True,
+                pulled_from=None,
+            )
 
 
 @pytest.mark.django_db

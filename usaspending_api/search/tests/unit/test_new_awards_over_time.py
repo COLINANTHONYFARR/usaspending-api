@@ -2,11 +2,12 @@ import json
 import pytest
 
 from datetime import datetime
-from model_mommy import mommy
+from model_bakery import baker
 
 from usaspending_api.common.exceptions import InvalidParameterException
 from usaspending_api.common.exceptions import UnprocessableEntityException
 from usaspending_api.common.helpers.generic_helper import get_time_period_message
+from usaspending_api.search.tests.data.utilities import setup_elasticsearch_test
 from usaspending_api.search.v2.views.new_awards_over_time import NewAwardsOverTimeVisualizationViewSet
 
 
@@ -38,67 +39,162 @@ def catch_filter_errors(viewset, filters, expected_exception):
 def add_award_recipients(db):
     current_id = 1
     new_award_count = 12
+    baker.make(
+        "recipient.RecipientLookup",
+        uei="HX3VU12NNWN9",
+        legal_business_name="Sample Recipient",
+        recipient_hash="63248e89-7fb7-2d51-4085-8163798379d9",
+    )
+
+    baker.make(
+        "recipient.RecipientProfile",
+        uei="HX3VU12NNWN9",
+        recipient_level="R",
+        recipient_hash="63248e89-7fb7-2d51-4085-8163798379d9",
+        recipient_name="Sample Recipient",
+    )
+    baker.make(
+        "recipient.RecipientLookup",
+        uei="K87WE4KQLBG4",
+        legal_business_name="Sample Recipient",
+        recipient_hash="6a1765a8-6948-6ae8-ee2a-1cfc72de739d",
+    )
+
+    baker.make(
+        "recipient.RecipientProfile",
+        uei="K87WE4KQLBG4",
+        recipient_level="R",
+        recipient_hash="6a1765a8-6948-6ae8-ee2a-1cfc72de739d",
+        recipient_name="Sample Recipient",
+    )
     for i in range(current_id, current_id + new_award_count):
-        mommy.make("awards.Award", id=i)
-        mommy.make(
-            "recipient.SummaryAwardRecipient",
+        baker.make(
+            "search.AwardSearch",
             award_id=i,
+            date_signed=datetime(2009, 5, 30),
+            latest_transaction_id=i,
+            earliest_transaction_id=i,
+            type="A",
             action_date=datetime(2009, 5, 30),
-            recipient_hash="21a1b0df-e7cd-349b-b948-60ed0ac1e6a0",
+            recipient_uei="HX3VU12NNWN9",
+            parent_uei=None,
+            recipient_hash="63248e89-7fb7-2d51-4085-8163798379d9",
+        )
+        baker.make(
+            "search.TransactionSearch",
+            transaction_id=i,
+            award_id=i,
+            is_fpds=True,
+            action_date=datetime(2009, 5, 30),
+            recipient_uei="HX3VU12NNWN9",
             parent_uei=None,
         )
     current_id += new_award_count
     new_award_count = 3
     for i in range(current_id, current_id + new_award_count):
-        mommy.make("awards.Award", id=i)
-        mommy.make(
-            "recipient.SummaryAwardRecipient",
+        baker.make(
+            "search.AwardSearch",
             award_id=i,
+            date_signed=datetime(2009, 5, 1),
+            latest_transaction_id=i,
+            earliest_transaction_id=i,
+            type="A",
             action_date=datetime(2009, 5, 1),
-            recipient_hash="21a1b0df-e7cd-349b-b948-60ed0ac1e6a0",
+            recipient_uei="HX3VU12NNWN9",
+            parent_uei=None,
+            recipient_hash="63248e89-7fb7-2d51-4085-8163798379d9",
+        )
+        baker.make(
+            "search.TransactionSearch",
+            transaction_id=i,
+            award_id=i,
+            is_fpds=True,
+            action_date=datetime(2009, 5, 1),
+            recipient_uei="HX3VU12NNWN9",
             parent_uei=None,
         )
     current_id += new_award_count
     new_award_count = 1
     for i in range(current_id, current_id + new_award_count):
-        mommy.make("awards.Award", id=i)
-        mommy.make(
-            "recipient.SummaryAwardRecipient",
+        baker.make(
+            "search.AwardSearch",
             award_id=i,
+            date_signed=datetime(2009, 7, 2),
+            latest_transaction_id=i,
+            earliest_transaction_id=i,
+            type="A",
             action_date=datetime(2009, 7, 2),
-            recipient_hash="21a1b0df-e7cd-349b-b948-60ed0ac1e6a0",
+            recipient_uei="HX3VU12NNWN9",
+            parent_uei=None,
+            recipient_hash="63248e89-7fb7-2d51-4085-8163798379d9",
+        )
+        baker.make(
+            "search.TransactionSearch",
+            transaction_id=i,
+            award_id=i,
+            is_fpds=True,
+            action_date=datetime(2009, 7, 2),
+            recipient_uei="HX3VU12NNWN9",
             parent_uei=None,
         )
     current_id += new_award_count
     new_award_count = 2
     for i in range(current_id, current_id + new_award_count):
-        mommy.make("awards.Award", id=i)
-        mommy.make(
-            "recipient.SummaryAwardRecipient",
+        baker.make(
+            "search.AwardSearch",
             award_id=i,
+            date_signed=datetime(2008, 1, 10),
+            latest_transaction_id=i,
+            earliest_transaction_id=i,
+            type="A",
             action_date=datetime(2008, 1, 10),
-            recipient_hash="21a1b0df-e7cd-349b-b948-60ed0ac1e6a0",
+            recipient_uei="HX3VU12NNWN9",
+            parent_uei=None,
+            recipient_hash="63248e89-7fb7-2d51-4085-8163798379d9",
+        )
+        baker.make(
+            "search.TransactionSearch",
+            transaction_id=i,
+            award_id=i,
+            is_fpds=True,
+            action_date=datetime(2008, 1, 10),
+            recipient_uei="HX3VU12NNWN9",
             parent_uei=None,
         )
     current_id += new_award_count
     new_award_count = 6
     for i in range(current_id, current_id + new_award_count):
-        mommy.make("awards.Award", id=i)
-        mommy.make(
-            "recipient.SummaryAwardRecipient",
+        baker.make(
+            "search.AwardSearch",
             award_id=i,
+            date_signed=datetime(2009, 7, 30),
+            latest_transaction_id=i,
+            earliest_transaction_id=i,
+            type="A",
             action_date=datetime(2009, 7, 30),
-            recipient_hash="4e418651-4b83-8722-ab4e-e68d80bfb3b3",
+            recipient_uei="K87WE4KQLBG4",
+            parent_uei=None,
+            recipient_hash="6a1765a8-6948-6ae8-ee2a-1cfc72de739d",
+        )
+        baker.make(
+            "search.TransactionSearch",
+            transaction_id=i,
+            award_id=i,
+            is_fpds=True,
+            action_date=datetime(2009, 7, 30),
+            recipient_uei="K87WE4KQLBG4",
             parent_uei=None,
         )
 
 
-def test_new_awards_month(client, add_award_recipients):
+def test_new_awards_month(client, monkeypatch, add_award_recipients, elasticsearch_award_index):
+    setup_elasticsearch_test(monkeypatch, elasticsearch_award_index)
+
     test_payload = {
         "group": "month",
         "filters": {
             "time_period": [{"start_date": "2008-10-01", "end_date": "2010-09-30"}],
-            "recipient_id": "21a1b0df-e7cd-349b-b948-60ed0ac1e6a0-R",
+            "recipient_id": "63248e89-7fb7-2d51-4085-8163798379d9-R",
         },
     }
     expected_results = []
@@ -158,12 +254,13 @@ def test_new_awards_month(client, add_award_recipients):
     assert expected_response == resp.data
 
 
-def test_new_awards_quarter(client, add_award_recipients):
+def test_new_awards_quarter(client, monkeypatch, add_award_recipients, elasticsearch_award_index):
+    setup_elasticsearch_test(monkeypatch, elasticsearch_award_index)
     test_payload = {
         "group": "quarter",
         "filters": {
             "time_period": [{"start_date": "2008-10-01", "end_date": "2010-09-30"}],
-            "recipient_id": "21a1b0df-e7cd-349b-b948-60ed0ac1e6a0-R",
+            "recipient_id": "63248e89-7fb7-2d51-4085-8163798379d9-R",
         },
     }
     resp = client.post(get_new_awards_over_time_url(), content_type="application/json", data=json.dumps(test_payload))
@@ -224,12 +321,13 @@ def test_new_awards_quarter(client, add_award_recipients):
     assert expected_response == resp.data
 
 
-def test_new_awards_fiscal_year(client, add_award_recipients):
+def test_new_awards_fiscal_year(client, monkeypatch, add_award_recipients, elasticsearch_award_index):
+    setup_elasticsearch_test(monkeypatch, elasticsearch_award_index)
     test_payload = {
         "group": "fiscal_year",
         "filters": {
             "time_period": [{"start_date": "2008-10-01", "end_date": "2010-09-30"}],
-            "recipient_id": "21a1b0df-e7cd-349b-b948-60ed0ac1e6a0-R",
+            "recipient_id": "63248e89-7fb7-2d51-4085-8163798379d9-R",
         },
     }
     expected_response = {
@@ -263,12 +361,13 @@ def test_new_awards_fiscal_year(client, add_award_recipients):
     assert expected_response == resp.data
 
 
-def test_new_awards_failures(client, add_award_recipients):
+def test_new_awards_failures(client, monkeypatch, add_award_recipients, elasticsearch_award_index):
+    setup_elasticsearch_test(monkeypatch, elasticsearch_award_index)
     test_payload = {
         "group": "quarter",
         "filters": {
             "time_period": [{"start_date": "2008-10-01", "end_date": "2010-09-30"}],
-            "recipient_id": "21a1b0df-e7cd-349b-b948-60ed0ac1e6a0-P",
+            "recipient_id": "63248e89-7fb7-2d51-4085-8163798379d9-P",
         },
     }
     resp = client.post(get_new_awards_over_time_url(), content_type="application/json", data=json.dumps(test_payload))

@@ -40,9 +40,9 @@ CREATE MATERIALIZED VIEW public.temporary_recipients_from_transactions_view AS (
         ELSE tn.federal_action_obligation
       END, 0)::NUMERIC(23, 2) AS generated_pragmatic_obligation
   FROM
-    transaction_normalized tn
-  LEFT OUTER JOIN transaction_fpds as fpds ON tn.id = fpds.transaction_id
-  LEFT OUTER JOIN transaction_fabs as fabs ON tn.id = fabs.transaction_id
+    vw_transaction_normalized tn
+  LEFT OUTER JOIN vw_transaction_fpds as fpds ON tn.id = fpds.transaction_id
+  LEFT OUTER JOIN vw_transaction_fabs as fabs ON tn.id = fabs.transaction_id
   WHERE
     tn.action_date >= '2007-10-01'
     AND tn.type IS NOT NULL
@@ -91,7 +91,7 @@ INSERT INTO public.temporary_restock_recipient_profile (
     uei,
     parent_uei
   FROM
-    public.recipient_lookup
+    rpt.recipient_lookup
 UNION ALL
   SELECT
     'C' as recipient_level,
@@ -101,7 +101,7 @@ UNION ALL
     uei,
     parent_uei
   FROM
-    public.recipient_lookup
+    rpt.recipient_lookup
 UNION ALL
   SELECT
     'R' as recipient_level,
@@ -111,7 +111,7 @@ UNION ALL
     uei,
     parent_uei
   FROM
-    public.recipient_lookup;
+    rpt.recipient_lookup;
 
 
 CREATE UNIQUE INDEX idx_recipient_profile_uniq_new ON public.temporary_restock_recipient_profile USING BTREE(recipient_hash, recipient_level);
@@ -346,7 +346,7 @@ DELETE FROM public.temporary_restock_recipient_profile WHERE unused = true;
 --------------------------------------------------------------------------------
 DO $$ BEGIN RAISE NOTICE 'Step 10: updating destination table'; END $$;
 
-DELETE FROM public.recipient_profile rp
+DELETE FROM rpt.recipient_profile rp
 WHERE NOT EXISTS (
     SELECT FROM public.temporary_restock_recipient_profile temp_p
     WHERE rp.recipient_hash = temp_p.recipient_hash
@@ -354,7 +354,7 @@ WHERE NOT EXISTS (
     )
 ;
 
-UPDATE public.recipient_profile rp
+UPDATE rpt.recipient_profile rp
 SET
     recipient_unique_id = temp_p.recipient_unique_id,
     uei = temp_p.uei,
@@ -391,7 +391,7 @@ WHERE
 ;
 
 
-INSERT INTO public.recipient_profile (
+INSERT INTO rpt.recipient_profile (
     recipient_level, recipient_hash, recipient_unique_id, uei, parent_uei,
     recipient_name, recipient_affiliations, award_types, last_12_months,
     last_12_contracts, last_12_loans, last_12_grants, last_12_direct_payments, last_12_other,

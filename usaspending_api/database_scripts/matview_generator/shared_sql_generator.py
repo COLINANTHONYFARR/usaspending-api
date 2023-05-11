@@ -15,14 +15,14 @@ TEMPLATE = {
     "refresh_matview": "REFRESH MATERIALIZED VIEW {}{} WITH DATA;",
     "empty_matview": "REFRESH MATERIALIZED VIEW {} WITH NO DATA;",
     "analyze": "ANALYZE VERBOSE {};",
-    "vacuum": "VACUUM ANALYZE VERBOSE {};",
+    "vacuum": "VACUUM VERBOSE ANALYZE {};",
     "create_index": "CREATE {}INDEX {} ON {} USING {}({}){}{};",
     "create_stats": "CREATE STATISTICS {} ON {} FROM {};",
     "rename_index": "ALTER INDEX {}{} RENAME TO {};",
     "rename_stats": "ALTER STATISTICS {} RENAME TO {};",
     "grant_select": "GRANT SELECT ON {} TO {};",
     "sql_print_output": "DO $$ BEGIN RAISE NOTICE '{}'; END $$;",
-    "read_indexes": "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = '{}';",
+    "read_indexes": "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = '{}' AND tablename = '{}';",
     "read_constraints": "select conname, pg_get_constraintdef(oid) from pg_constraint where contype IN ('p', 'f') and conrelid = '{}'::regclass;",
 }
 

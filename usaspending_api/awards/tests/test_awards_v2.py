@@ -3,10 +3,7 @@ import pytest
 import json
 
 from rest_framework import status
-from model_mommy import mommy
-
-from usaspending_api.awards.models import TransactionNormalized
-from usaspending_api.references.models import Agency
+from model_bakery import baker
 
 
 @pytest.fixture
@@ -15,25 +12,25 @@ def awards_and_transactions(db):
     # DUNS
     duns = {"awardee_or_recipient_uniqu": "123", "legal_business_name": "Sams Club"}
 
-    mommy.make("recipient.DUNS", **duns)
+    baker.make("recipient.DUNS", **duns)
 
     # Recipient Lookup
     parent_recipient_lookup = {"duns": "123", "uei": "ABC", "recipient_hash": "cfd3f3f5-2162-7679-9f6b-429cecaa3e1e"}
     recipient_lookup = {"duns": "456", "uei": "DEF", "recipient_hash": "66545a8d-bf37-3eda-cce5-29c6170c9aab"}
 
-    mommy.make("recipient.RecipientLookup", **parent_recipient_lookup)
-    mommy.make("recipient.RecipientLookup", **recipient_lookup)
+    baker.make("recipient.RecipientLookup", **parent_recipient_lookup)
+    baker.make("recipient.RecipientLookup", **recipient_lookup)
 
     # Recipient Profile
     parent_recipient_profile = {"recipient_hash": "cfd3f3f5-2162-7679-9f6b-429cecaa3e1e", "recipient_level": "P"}
     recipient_profile = {"recipient_hash": "66545a8d-bf37-3eda-cce5-29c6170c9aab", "recipient_level": "C"}
 
-    mommy.make("recipient.RecipientProfile", **parent_recipient_profile)
-    mommy.make("recipient.RecipientProfile", **recipient_profile)
+    baker.make("recipient.RecipientProfile", **parent_recipient_profile)
+    baker.make("recipient.RecipientProfile", **recipient_profile)
 
     # CFDA
-    mommy.make("references.Cfda", program_number=12.340)
-    mommy.make(
+    baker.make("references.Cfda", program_number=12.340)
+    baker.make(
         "references.Cfda",
         applicant_eligibility="Hello. I am an applicant eligibility statement.",
         beneficiary_eligibility="Hello. I am a beneficiary eligibility statement.",
@@ -46,7 +43,7 @@ def awards_and_transactions(db):
         url="www.website.com",
         website_address="www.website.biz",
     )
-    mommy.make(
+    baker.make(
         "references.Cfda",
         federal_agency="Agency 2",
         objectives="objectives",
@@ -59,34 +56,34 @@ def awards_and_transactions(db):
     )
 
     # PSC
-    mommy.make("references.PSC", code="10", description="Whatever")
-    mommy.make("references.PSC", code="1005", description="More specific whatever")
-    mommy.make("references.PSC", code="A", description="R&D")
-    mommy.make("references.PSC", code="A1", description="R&D - Steak Sauce")
-    mommy.make("references.PSC", code="A13", description="R&D - Brand specific steak condiments")
-    mommy.make("references.PSC", code="A136", description="R&D - Very specific steak research")
-    mommy.make("references.PSC", code="M", description="Something")
-    mommy.make("references.PSC", code="M1", description="Something More Specific")
-    mommy.make("references.PSC", code="M123", description="Something Most Specific")
+    baker.make("references.PSC", code="10", description="Whatever")
+    baker.make("references.PSC", code="1005", description="More specific whatever")
+    baker.make("references.PSC", code="A", description="R&D")
+    baker.make("references.PSC", code="A1", description="R&D - Steak Sauce")
+    baker.make("references.PSC", code="A13", description="R&D - Brand specific steak condiments")
+    baker.make("references.PSC", code="A136", description="R&D - Very specific steak research")
+    baker.make("references.PSC", code="M", description="Something")
+    baker.make("references.PSC", code="M1", description="Something More Specific")
+    baker.make("references.PSC", code="M123", description="Something Most Specific")
 
     # NAICS
-    mommy.make("references.NAICS", code="11", description="Agriculture")
-    mommy.make("references.NAICS", code="1111", description="Soybean & Oilseed Agriculture")
-    mommy.make("references.NAICS", code="111120", description="Soybean Harvesting")
+    baker.make("references.NAICS", code="11", description="Agriculture")
+    baker.make("references.NAICS", code="1111", description="Soybean & Oilseed Agriculture")
+    baker.make("references.NAICS", code="111120", description="Soybean Harvesting")
 
     # Toptier Agency
     toptier_agency_1 = {"pk": 1, "abbreviation": "TA1", "name": "TOPTIER AGENCY 1", "toptier_code": "ABC"}
     toptier_agency_2 = {"pk": 2, "abbreviation": "TA2", "name": "TOPTIER AGENCY 2", "toptier_code": "002"}
 
-    ta1 = mommy.make("references.ToptierAgency", **toptier_agency_1)
-    ta2 = mommy.make("references.ToptierAgency", **toptier_agency_2)
+    ta1 = baker.make("references.ToptierAgency", **toptier_agency_1)
+    ta2 = baker.make("references.ToptierAgency", **toptier_agency_2)
 
     # Subtier Agency
     subtier_agency_1 = {"pk": 1, "abbreviation": "SA1", "name": "SUBTIER AGENCY 1", "subtier_code": "DEF"}
     subtier_agency_2 = {"pk": 2, "abbreviation": "SA2", "name": "SUBTIER AGENCY 2", "subtier_code": "1000"}
 
-    sa1 = mommy.make("references.SubtierAgency", **subtier_agency_1)
-    sa2 = mommy.make("references.SubtierAgency", **subtier_agency_2)
+    sa1 = baker.make("references.SubtierAgency", **subtier_agency_1)
+    sa2 = baker.make("references.SubtierAgency", **subtier_agency_2)
 
     # Agency
     agency = {
@@ -102,47 +99,20 @@ def awards_and_transactions(db):
         "toptier_flag": True,
     }
 
-    mommy.make("references.Agency", **agency)
-    mommy.make("references.Agency", **agency_2)
+    baker.make("references.Agency", **agency)
+    baker.make("references.Agency", **agency_2)
 
-    # Transaction Normalized
-    bc = {"business_categories": ["small_business"]}
+    # Transaction Search
 
-    asst_trans_norm_1 = {"pk": 1, "award_id": 1, **bc}
-    asst_trans_norm_2 = {"pk": 3, "award_id": 3, **bc}
-    asst_trans_norm_3 = {"pk": 4, "award_id": 3, **bc}
-    asst_trans_norm_4 = {"pk": 5, "award_id": 3, **bc}
-    asst_trans_norm_5 = {"pk": 13, "award_id": 13, **bc}
-
-    cont_trans_norm_1 = {"pk": 2, "award_id": 2, **bc}
-    cont_trans_norm_2 = {"pk": 6, "award_id": 5, **bc}
-    cont_trans_norm_3 = {"pk": 7, "award_id": 6, **bc}
-    cont_trans_norm_4 = {"pk": 8, "award_id": 7, **bc}
-    cont_trans_norm_5 = {"pk": 9, "award_id": 8, **bc}
-    cont_trans_norm_6 = {"pk": 10, "award_id": 9, **bc}
-    cont_trans_norm_7 = {"pk": 11, "award_id": 10, **bc}
-
-    mommy.make("awards.TransactionNormalized", **asst_trans_norm_1)
-    mommy.make("awards.TransactionNormalized", **asst_trans_norm_2)
-    mommy.make("awards.TransactionNormalized", **asst_trans_norm_3)
-    mommy.make("awards.TransactionNormalized", **asst_trans_norm_4)
-    mommy.make("awards.TransactionNormalized", **asst_trans_norm_5)
-
-    mommy.make("awards.TransactionNormalized", **cont_trans_norm_1)
-    mommy.make("awards.TransactionNormalized", **cont_trans_norm_2)
-    mommy.make("awards.TransactionNormalized", **cont_trans_norm_3)
-    mommy.make("awards.TransactionNormalized", **cont_trans_norm_4)
-    mommy.make("awards.TransactionNormalized", **cont_trans_norm_5)
-    mommy.make("awards.TransactionNormalized", **cont_trans_norm_6)
-    mommy.make("awards.TransactionNormalized", **cont_trans_norm_7)
-
-    # Transaction FABS
     asst_trans_1 = {
-        "pk": 1,
+        "is_fpds": False,
+        "award_id": 1,
+        "generated_unique_award_id": "ASST_AGG_1830212.0481163_3620",
         "record_type": 111,
-        "transaction": TransactionNormalized.objects.get(pk=1),
-        "awardee_or_recipient_legal": "LEGAL ENTITY",
-        "awardee_or_recipient_uniqu": "456",
+        "transaction_id": 1,
+        "recipient_name": "LEGAL ENTITY",
+        "recipient_name_raw": "LEGAL ENTITY",
+        "recipient_unique_id": "456",
         "awarding_office_name": "awarding_office",
         "cfda_number": 12.340,
         "cfda_title": "Shiloh",
@@ -150,42 +120,47 @@ def awards_and_transactions(db):
         "legal_entity_address_line1": "123 main st",
         "legal_entity_address_line2": None,
         "legal_entity_address_line3": None,
-        "legal_entity_city_name": "Charlotte",
-        "legal_entity_congressional": "90",
-        "legal_entity_country_code": "USA",
-        "legal_entity_country_name": "UNITED STATES",
-        "legal_entity_county_code": "019",
-        "legal_entity_county_name": "BUNCOMBE",
-        "legal_entity_state_code": "NC",
-        "legal_entity_state_name": "North Carolina",
+        "recipient_location_city_name": "Charlotte",
+        "recipient_location_congressional_code": "90",
+        "recipient_location_country_code": "USA",
+        "recipient_location_country_name": "UNITED STATES",
+        "recipient_location_county_code": "019",
+        "recipient_location_county_name": "BUNCOMBE",
+        "recipient_location_state_code": "NC",
+        "recipient_location_state_name": "North Carolina",
         "legal_entity_zip_last4": "5312",
-        "legal_entity_zip5": "12204",
-        "modified_at": "2000-01-02T00:00:00Z",
+        "recipient_location_zip5": "12204",
+        "last_modified_date": "2000-01-02",
         "officer_1_amount": 50000.00,
         "officer_1_name": "John Apple",
         "officer_2_amount": 4623.00,
         "officer_2_name": "Wally World",
-        "place_of_perfor_state_code": "TX",
-        "place_of_perform_country_c": "PDA",
-        "place_of_perform_country_n": "Pacific Delta Amazon",
-        "place_of_perform_county_na": "Tripoli",
-        "place_of_perform_county_co": "023",
+        "pop_state_code": "TX",
+        "pop_country_code": "PDA",
+        "pop_country_name": "Pacific Delta Amazon",
+        "pop_county_name": "Tripoli",
+        "pop_county_code": "023",
         "place_of_perform_zip_last4": "2135",
-        "place_of_performance_city": "Austin",
-        "place_of_performance_congr": "-0-",
+        "pop_city_name": "Austin",
+        "pop_congressional_code": "-0-",
         "place_of_performance_forei": None,
-        "place_of_performance_zip5": "40221",
-        "uei": "DEF",
-        "ultimate_parent_legal_enti": "PARENT LEGAL ENTITY",
-        "ultimate_parent_uei": "ABC",
-        "ultimate_parent_unique_ide": "123",
+        "pop_zip5": "40221",
+        "recipient_uei": "DEF",
+        "parent_recipient_name": "PARENT LEGAL ENTITY",
+        "parent_recipient_name_raw": "PARENT LEGAL ENTITY",
+        "parent_uei": "ABC",
+        "parent_recipient_unique_id": "123",
+        "business_categories": ["small_business"],
     }
     asst_trans_2 = {
-        "pk": 3,
+        "is_fpds": False,
+        "award_id": 3,
+        "generated_unique_award_id": "ASST_NON_0001_0",
         "record_type": 333,
-        "transaction": TransactionNormalized.objects.get(pk=3),
-        "awardee_or_recipient_legal": "LEGAL ENTITY",
-        "awardee_or_recipient_uniqu": "456",
+        "transaction_id": 3,
+        "recipient_name": "LEGAL ENTITY",
+        "recipient_name_raw": "LEGAL ENTITY",
+        "recipient_unique_id": "456",
         "awarding_office_name": "awarding_office",
         "cfda_number": 10.001,
         "cfda_title": "CFDA Title",
@@ -194,44 +169,49 @@ def awards_and_transactions(db):
         "legal_entity_address_line1": "123 main st",
         "legal_entity_address_line2": None,
         "legal_entity_address_line3": None,
-        "legal_entity_city_name": "Charlotte",
-        "legal_entity_congressional": "90",
-        "legal_entity_country_code": "USA",
-        "legal_entity_country_name": "UNITED STATES",
-        "legal_entity_county_code": "019",
-        "legal_entity_county_name": "BUNCOMBE",
-        "legal_entity_state_code": "NC",
-        "legal_entity_state_name": "North Carolina",
+        "recipient_location_city_name": "Charlotte",
+        "recipient_location_congressional_code": "90",
+        "recipient_location_country_code": "USA",
+        "recipient_location_country_name": "UNITED STATES",
+        "recipient_location_county_code": "019",
+        "recipient_location_county_name": "BUNCOMBE",
+        "recipient_location_state_code": "NC",
+        "recipient_location_state_name": "North Carolina",
         "legal_entity_zip_last4": "5312",
-        "legal_entity_zip5": "12204",
-        "modified_at": "2000-01-02T00:00:00Z",
+        "recipient_location_zip5": "12204",
+        "last_modified_date": "2000-01-02",
         "non_federal_funding_amount": 0,
         "officer_1_amount": 50000.00,
         "officer_1_name": "John Apple",
         "officer_2_amount": 4623.00,
         "officer_2_name": "Wally World",
-        "place_of_perfor_state_code": "TX",
-        "place_of_perform_country_c": "PDA",
-        "place_of_perform_country_n": "Pacific Delta Amazon",
-        "place_of_perform_county_co": "023",
-        "place_of_perform_county_na": "Tripoli",
+        "pop_state_code": "TX",
+        "pop_country_code": "PDA",
+        "pop_country_name": "Pacific Delta Amazon",
+        "pop_county_code": "023",
+        "pop_county_name": "Tripoli",
         "place_of_perform_zip_last4": "2135",
-        "place_of_performance_city": "Austin",
-        "place_of_performance_congr": "-0-",
+        "pop_city_name": "Austin",
+        "pop_congressional_code": "-0-",
         "place_of_performance_forei": None,
-        "place_of_performance_zip5": "40221",
+        "pop_zip5": "40221",
         "total_funding_amount": 100,
-        "uei": "DEF",
-        "ultimate_parent_legal_enti": "Dave's Pizza LLC",
-        "ultimate_parent_uei": "ABC",
-        "ultimate_parent_unique_ide": "123",
+        "recipient_uei": "DEF",
+        "parent_recipient_name": "Dave's Pizza LLC",
+        "parent_recipient_name_raw": "Dave's Pizza LLC",
+        "parent_uei": "ABC",
+        "parent_recipient_unique_id": "123",
+        "business_categories": ["small_business"],
     }
     asst_trans_3 = {
-        "pk": 4,
+        "is_fpds": False,
+        "award_id": 3,
+        "generated_unique_award_id": "ASST_NON_0001_0",
         "record_type": 444,
-        "transaction": TransactionNormalized.objects.get(pk=4),
-        "awardee_or_recipient_legal": "LEGAL ENTITY",
-        "awardee_or_recipient_uniqu": "456",
+        "transaction_id": 4,
+        "recipient_name": "LEGAL ENTITY",
+        "recipient_name_raw": "LEGAL ENTITY",
+        "recipient_unique_id": "456",
         "awarding_office_name": "awarding_office",
         "cfda_number": "10.002",
         "cfda_title": "CFDA Title 2",
@@ -240,44 +220,49 @@ def awards_and_transactions(db):
         "legal_entity_address_line1": "123 main st",
         "legal_entity_address_line2": None,
         "legal_entity_address_line3": None,
-        "legal_entity_city_name": "Charlotte",
-        "legal_entity_congressional": "90",
-        "legal_entity_country_code": "USA",
-        "legal_entity_country_name": "UNITED STATES",
-        "legal_entity_county_code": "019",
-        "legal_entity_county_name": "BUNCOMBE",
-        "legal_entity_state_code": "NC",
-        "legal_entity_state_name": "North Carolina",
+        "recipient_location_city_name": "Charlotte",
+        "recipient_location_congressional_code": "90",
+        "recipient_location_country_code": "USA",
+        "recipient_location_country_name": "UNITED STATES",
+        "recipient_location_county_code": "019",
+        "recipient_location_county_name": "BUNCOMBE",
+        "recipient_location_state_code": "NC",
+        "recipient_location_state_name": "North Carolina",
         "legal_entity_zip_last4": "5312",
-        "legal_entity_zip5": "12204",
-        "modified_at": "2000-01-02T00:00:00Z",
+        "recipient_location_zip5": "12204",
+        "last_modified_date": "2000-01-02",
         "non_federal_funding_amount": 0,
         "officer_1_amount": 50000.00,
         "officer_1_name": "John Apple",
         "officer_2_amount": 4623.00,
         "officer_2_name": "Wally World",
-        "place_of_perfor_state_code": "TX",
-        "place_of_perform_country_c": "PDA",
-        "place_of_perform_country_n": "Pacific Delta Amazon",
-        "place_of_perform_county_co": "023",
-        "place_of_perform_county_na": "Tripoli",
+        "pop_state_code": "TX",
+        "pop_country_code": "PDA",
+        "pop_country_name": "Pacific Delta Amazon",
+        "pop_county_code": "023",
+        "pop_county_name": "Tripoli",
         "place_of_perform_zip_last4": "2135",
-        "place_of_performance_city": "Austin",
-        "place_of_performance_congr": "-0-",
+        "pop_city_name": "Austin",
+        "pop_congressional_code": "-0-",
         "place_of_performance_forei": None,
-        "place_of_performance_zip5": "40221",
+        "pop_zip5": "40221",
         "total_funding_amount": 400,
-        "uei": "DEF",
-        "ultimate_parent_legal_enti": "PARENT LEGAL ENTITY",
-        "ultimate_parent_uei": "ABC",
-        "ultimate_parent_unique_ide": "123",
+        "recipient_uei": "DEF",
+        "parent_recipient_name": "PARENT LEGAL ENTITY",
+        "parent_recipient_name_raw": "PARENT LEGAL ENTITY",
+        "parent_uei": "ABC",
+        "parent_recipient_unique_id": "123",
+        "business_categories": ["small_business"],
     }
     asst_trans_4 = {
-        "pk": 5,
+        "is_fpds": False,
+        "award_id": 13,
+        "generated_unique_award_id": "ASST_AGG_whatever_3620",
         "record_type": 555,
-        "transaction": TransactionNormalized.objects.get(pk=5),
-        "awardee_or_recipient_legal": "LEGAL ENTITY",
-        "awardee_or_recipient_uniqu": "456",
+        "transaction_id": 5,
+        "recipient_name": "LEGAL ENTITY",
+        "recipient_name_raw": "LEGAL ENTITY",
+        "recipient_unique_id": "456",
         "awarding_office_name": "awarding_office",
         "cfda_number": "10.002",
         "cfda_title": "CFDA Title 2",
@@ -286,45 +271,50 @@ def awards_and_transactions(db):
         "legal_entity_address_line1": "123 main st",
         "legal_entity_address_line2": None,
         "legal_entity_address_line3": None,
-        "legal_entity_city_name": "Charlotte",
-        "legal_entity_congressional": "90",
-        "legal_entity_country_code": "USA",
-        "legal_entity_country_name": "UNITED STATES",
-        "legal_entity_county_code": "019",
-        "legal_entity_county_name": "BUNCOMBE",
-        "legal_entity_state_code": "NC",
-        "legal_entity_state_name": "North Carolina",
+        "recipient_location_city_name": "Charlotte",
+        "recipient_location_congressional_code": "90",
+        "recipient_location_country_code": "USA",
+        "recipient_location_country_name": "UNITED STATES",
+        "recipient_location_county_code": "019",
+        "recipient_location_county_name": "BUNCOMBE",
+        "recipient_location_state_code": "NC",
+        "recipient_location_state_name": "North Carolina",
         "legal_entity_zip_last4": "5312",
-        "legal_entity_zip5": "12204",
-        "modified_at": "2000-01-02T00:00:00Z",
+        "recipient_location_zip5": "12204",
+        "last_modified_date": "2000-01-02",
         "non_federal_funding_amount": 0,
         "officer_1_amount": 50000.00,
         "officer_1_name": "John Apple",
         "officer_2_amount": 4623.00,
         "officer_2_name": "Wally World",
-        "place_of_perfor_state_code": "TX",
-        "place_of_perform_country_c": "PDA",
-        "place_of_perform_country_n": "Pacific Delta Amazon",
-        "place_of_perform_county_co": "023",
-        "place_of_perform_county_na": "Tripoli",
+        "pop_state_code": "TX",
+        "pop_country_code": "PDA",
+        "pop_country_name": "Pacific Delta Amazon",
+        "pop_county_code": "023",
+        "pop_county_name": "Tripoli",
         "place_of_perform_zip_last4": "2135",
-        "place_of_performance_city": "Austin",
-        "place_of_performance_congr": "-0-",
+        "pop_city_name": "Austin",
+        "pop_congressional_code": "-0-",
         "place_of_performance_forei": None,
-        "place_of_performance_zip5": "40221",
+        "pop_zip5": "40221",
         "total_funding_amount": 100,
-        "uei": "DEF",
-        "ultimate_parent_legal_enti": "PARENT LEGAL ENTITY",
-        "ultimate_parent_uei": "ABC",
-        "ultimate_parent_unique_ide": "123",
+        "recipient_uei": "DEF",
+        "parent_recipient_name": "PARENT LEGAL ENTITY",
+        "parent_recipient_name_raw": "PARENT LEGAL ENTITY",
+        "parent_uei": "ABC",
+        "parent_recipient_unique_id": "123",
+        "business_categories": ["small_business"],
     }
 
     asst_trans_5 = {
-        "pk": 13,
+        "is_fpds": False,
+        "award_id": 3,
+        "generated_unique_award_id": "ASST_NON_0001_0",
         "record_type": 666,
-        "transaction": TransactionNormalized.objects.get(pk=13),
-        "awardee_or_recipient_legal": "LEGAL ENTITY",
-        "awardee_or_recipient_uniqu": "456",
+        "transaction_id": 13,
+        "recipient_name": "LEGAL ENTITY",
+        "recipient_name_raw": "LEGAL ENTITY",
+        "recipient_unique_id": "456",
         "awarding_office_name": "awarding_office",
         "cfda_number": "10.002",
         "cfda_title": "CFDA Title 2",
@@ -333,53 +323,58 @@ def awards_and_transactions(db):
         "legal_entity_address_line1": "123 main st",
         "legal_entity_address_line2": None,
         "legal_entity_address_line3": None,
-        "legal_entity_city_name": None,
+        "recipient_location_city_name": None,
         "legal_entity_foreign_city": "Ontario",
-        "legal_entity_congressional": "90",
-        "legal_entity_country_code": "CAN",
-        "legal_entity_country_name": "CANADA",
-        "legal_entity_county_code": "019",
-        "legal_entity_county_name": None,
-        "legal_entity_state_code": "ONT",
-        "legal_entity_state_name": None,
+        "recipient_location_congressional_code": "90",
+        "recipient_location_country_code": "CAN",
+        "recipient_location_country_name": "CANADA",
+        "recipient_location_county_code": "019",
+        "recipient_location_county_name": None,
+        "recipient_location_state_code": "ONT",
+        "recipient_location_state_name": None,
         "legal_entity_zip_last4": "5312",
-        "legal_entity_zip5": "12204",
-        "modified_at": "2000-01-02T00:00:00Z",
+        "recipient_location_zip5": "12204",
+        "last_modified_date": "2000-01-02",
         "non_federal_funding_amount": 0,
         "officer_1_amount": 50000.00,
         "officer_1_name": "John Apple",
         "officer_2_amount": 4623.00,
         "officer_2_name": "Wally World",
-        "place_of_perfor_state_code": "TX",
-        "place_of_perform_country_c": "PDA",
-        "place_of_perform_country_n": "Pacific Delta Amazon",
-        "place_of_perform_county_co": "023",
-        "place_of_perform_county_na": "Tripoli",
+        "pop_state_code": "TX",
+        "pop_country_code": "PDA",
+        "pop_country_name": "Pacific Delta Amazon",
+        "pop_county_code": "023",
+        "pop_county_name": "Tripoli",
         "place_of_perform_zip_last4": "2135",
-        "place_of_performance_city": "Austin",
-        "place_of_performance_congr": "-0-",
+        "pop_city_name": "Austin",
+        "pop_congressional_code": "-0-",
         "place_of_performance_forei": None,
-        "place_of_performance_zip5": "40221",
+        "pop_zip5": "40221",
         "total_funding_amount": 100,
-        "uei": "DEF",
-        "ultimate_parent_legal_enti": "PARENT LEGAL ENTITY",
-        "ultimate_parent_uei": "ABC",
-        "ultimate_parent_unique_ide": "123",
+        "recipient_uei": "DEF",
+        "parent_recipient_name": "PARENT LEGAL ENTITY",
+        "parent_recipient_name_raw": "PARENT LEGAL ENTITY",
+        "parent_uei": "ABC",
+        "parent_recipient_unique_id": "123",
+        "business_categories": ["small_business"],
     }
 
-    mommy.make("awards.TransactionFABS", **asst_trans_1)
-    mommy.make("awards.TransactionFABS", **asst_trans_2)
-    mommy.make("awards.TransactionFABS", **asst_trans_3)
-    mommy.make("awards.TransactionFABS", **asst_trans_4)
-    mommy.make("awards.TransactionFABS", **asst_trans_5)
+    baker.make("search.TransactionSearch", **asst_trans_1)
+    baker.make("search.TransactionSearch", **asst_trans_2)
+    baker.make("search.TransactionSearch", **asst_trans_3)
+    baker.make("search.TransactionSearch", **asst_trans_4)
+    baker.make("search.TransactionSearch", **asst_trans_5)
 
     # Transaction FPDS
     cont_trans_1 = {
-        "pk": 2,
-        "transaction": TransactionNormalized.objects.get(pk=2),
-        "awardee_or_recipient_legal": "LEGAL ENTITY",
-        "awardee_or_recipient_uei": "DEF",
-        "awardee_or_recipient_uniqu": "456",
+        "is_fpds": True,
+        "award_id": 2,
+        "generated_unique_award_id": "CONT_AWD_03VD_9700_SPM30012D3486_9700",
+        "transaction_id": 2,
+        "recipient_name": "LEGAL ENTITY",
+        "recipient_name_raw": "LEGAL ENTITY",
+        "recipient_uei": "DEF",
+        "recipient_unique_id": "456",
         "awarding_office_name": "awarding_office",
         "clinger_cohen_act_pla_desc": "NO",
         "commercial_item_acquisitio": "A",
@@ -399,25 +394,25 @@ def awards_and_transactions(db):
         "information_technolog_desc": "NOT IT PRODUCTS OR SERVICES",
         "interagency_contract_desc": "NOT APPLICABLE",
         "labor_standards_descrip": "NO",
-        "last_modified": "2001-02-03",
+        "last_modified_date": "2001-02-03",
         "legal_entity_address_line1": "123 main st",
         "legal_entity_address_line2": None,
         "legal_entity_address_line3": None,
-        "legal_entity_city_name": "Charlotte",
-        "legal_entity_congressional": "90",
-        "legal_entity_country_code": "USA",
-        "legal_entity_country_name": "UNITED STATES",
-        "legal_entity_county_code": "019",
-        "legal_entity_county_name": "BUNCOMBE",
-        "legal_entity_state_code": "NC",
-        "legal_entity_state_descrip": "North Carolina",
-        "legal_entity_zip5": "12204",
+        "recipient_location_city_name": "Charlotte",
+        "recipient_location_congressional_code": "90",
+        "recipient_location_country_code": "USA",
+        "recipient_location_country_name": "UNITED STATES",
+        "recipient_location_county_code": "019",
+        "recipient_location_county_name": "BUNCOMBE",
+        "recipient_location_state_code": "NC",
+        "recipient_location_state_name": "North Carolina",
+        "recipient_location_zip5": "12204",
         "legal_entity_zip_last4": "5312",
         "major_program": None,
         "materials_supplies_descrip": "NO",
         "multi_year_contract_desc": "NO",
         "multiple_or_single_aw_desc": None,
-        "naics": "111120",
+        "naics_code": "111120",
         "naics_description": "PUMP AND PUMPING EQUIPMENT MANUFACTURING",
         "number_of_offers_received": None,
         "officer_1_amount": 10000.00,
@@ -425,18 +420,18 @@ def awards_and_transactions(db):
         "officer_2_amount": 1234.00,
         "officer_2_name": "Stan Burger",
         "other_than_full_and_o_desc": None,
-        "place_of_perf_country_desc": "UNITED STATES",
-        "place_of_perform_city_name": "Charlotte",
-        "place_of_perform_country_c": "USA",
-        "place_of_perform_county_co": "019",
-        "place_of_perform_county_na": "BUNCOMBE",
-        "place_of_performance_congr": "90",
-        "place_of_performance_state": "NC",
+        "pop_country_name": "UNITED STATES",
+        "pop_city_name": "Charlotte",
+        "pop_country_code": "USA",
+        "pop_county_code": "019",
+        "pop_county_name": "BUNCOMBE",
+        "pop_congressional_code": "90",
+        "pop_state_code": "NC",
         "place_of_perform_zip_last4": "5312",
-        "place_of_performance_zip5": "12204",
+        "pop_zip5": "12204",
         "period_of_perf_potential_e": "2003-04-05",
         "price_evaluation_adjustmen": None,
-        "product_or_service_co_desc": None,
+        "product_or_service_description": None,
         "product_or_service_code": "1005",
         "program_acronym": None,
         "program_system_or_equipmen": "000",
@@ -451,18 +446,23 @@ def awards_and_transactions(db):
         "type_of_contract_pric_desc": "FIRM FIXED PRICE",
         "type_of_idc_description": None,
         "type_set_aside_description": None,
-        "ultimate_parent_legal_enti": "PARENT LEGAL ENTITY",
-        "ultimate_parent_uei": "ABC",
-        "ultimate_parent_unique_ide": "123",
+        "parent_recipient_name": "PARENT LEGAL ENTITY",
+        "parent_recipient_name_raw": "PARENT LEGAL ENTITY",
+        "parent_uei": "ABC",
+        "parent_recipient_unique_id": "123",
         "national_interest_action": "NONE",
         "national_interest_desc": "NONE",
+        "business_categories": ["small_business"],
     }
     cont_trans_2 = {
-        "pk": 6,
-        "transaction": TransactionNormalized.objects.get(pk=6),
-        "awardee_or_recipient_legal": "LEGAL ENTITY",
-        "awardee_or_recipient_uei": "DEF",
-        "awardee_or_recipient_uniqu": "456",
+        "is_fpds": True,
+        "award_id": 5,
+        "generated_unique_award_id": "CONT_AWD_WHATEVER",
+        "transaction_id": 6,
+        "recipient_name": "LEGAL ENTITY",
+        "recipient_name_raw": "LEGAL ENTITY",
+        "recipient_uei": "DEF",
+        "recipient_unique_id": "456",
         "awarding_office_name": "awarding_office",
         "clinger_cohen_act_pla_desc": "NO",
         "commercial_item_acquisitio": "A",
@@ -482,25 +482,25 @@ def awards_and_transactions(db):
         "information_technolog_desc": "NOT IT PRODUCTS OR SERVICES",
         "interagency_contract_desc": "NOT APPLICABLE",
         "labor_standards_descrip": "NO",
-        "last_modified": "2001-02-03",
+        "last_modified_date": "2001-02-03",
         "legal_entity_address_line1": "123 main st",
         "legal_entity_address_line2": None,
         "legal_entity_address_line3": None,
-        "legal_entity_city_name": "Charlotte",
-        "legal_entity_congressional": "90",
-        "legal_entity_country_code": "USA",
-        "legal_entity_country_name": "UNITED STATES",
-        "legal_entity_county_code": "019",
-        "legal_entity_county_name": "BUNCOMBE",
-        "legal_entity_state_code": "NC",
-        "legal_entity_state_descrip": "North Carolina",
-        "legal_entity_zip5": "12204",
+        "recipient_location_city_name": "Charlotte",
+        "recipient_location_congressional_code": "90",
+        "recipient_location_country_code": "USA",
+        "recipient_location_country_name": "UNITED STATES",
+        "recipient_location_county_code": "019",
+        "recipient_location_county_name": "BUNCOMBE",
+        "recipient_location_state_code": "NC",
+        "recipient_location_state_name": "North Carolina",
+        "recipient_location_zip5": "12204",
         "legal_entity_zip_last4": "5312",
         "major_program": None,
         "materials_supplies_descrip": "NO",
         "multi_year_contract_desc": "NO",
         "multiple_or_single_aw_desc": None,
-        "naics": "111120",
+        "naics_code": "111120",
         "naics_description": "PUMP AND PUMPING EQUIPMENT MANUFACTURING",
         "number_of_offers_received": None,
         "officer_1_amount": 10000.00,
@@ -508,18 +508,18 @@ def awards_and_transactions(db):
         "officer_2_amount": 1234.00,
         "officer_2_name": "Stan Burger",
         "other_than_full_and_o_desc": None,
-        "place_of_perf_country_desc": "UNITED STATES",
-        "place_of_perform_city_name": "Charlotte",
-        "place_of_perform_country_c": "USA",
-        "place_of_perform_county_co": "019",
-        "place_of_perform_county_na": "BUNCOMBE",
-        "place_of_performance_congr": "90",
-        "place_of_performance_state": "NC",
+        "pop_country_name": "UNITED STATES",
+        "pop_city_name": "Charlotte",
+        "pop_country_code": "USA",
+        "pop_county_code": "019",
+        "pop_county_name": "BUNCOMBE",
+        "pop_congressional_code": "90",
+        "pop_state_code": "NC",
         "place_of_perform_zip_last4": "5312",
-        "place_of_performance_zip5": "12204",
+        "pop_zip5": "12204",
         "period_of_perf_potential_e": "2003-04-05",
         "price_evaluation_adjustmen": None,
-        "product_or_service_co_desc": None,
+        "product_or_service_description": None,
         "product_or_service_code": "A136",
         "program_acronym": None,
         "program_system_or_equipmen": "000",
@@ -534,18 +534,23 @@ def awards_and_transactions(db):
         "type_of_contract_pric_desc": "FIRM FIXED PRICE",
         "type_of_idc_description": None,
         "type_set_aside_description": None,
-        "ultimate_parent_legal_enti": "PARENT LEGAL ENTITY",
-        "ultimate_parent_uei": "ABC",
-        "ultimate_parent_unique_ide": "123",
+        "parent_recipient_name": "PARENT LEGAL ENTITY",
+        "parent_recipient_name_raw": "PARENT LEGAL ENTITY",
+        "parent_uei": "ABC",
+        "parent_recipient_unique_id": "123",
         "national_interest_action": "NONE",
         "national_interest_desc": "NONE",
+        "business_categories": ["small_business"],
     }
     cont_trans_3 = {
-        "pk": 7,
-        "transaction": TransactionNormalized.objects.get(pk=7),
-        "awardee_or_recipient_legal": "LEGAL ENTITY",
-        "awardee_or_recipient_uei": "DEF",
-        "awardee_or_recipient_uniqu": "456",
+        "is_fpds": True,
+        "award_id": 6,
+        "generated_unique_award_id": "CONT_AWD_WHATEVER2",
+        "transaction_id": 7,
+        "recipient_name": "LEGAL ENTITY",
+        "recipient_name_raw": "LEGAL ENTITY",
+        "recipient_uei": "DEF",
+        "recipient_unique_id": "456",
         "awarding_office_name": "awarding_office",
         "clinger_cohen_act_pla_desc": "NO",
         "commercial_item_acquisitio": "A",
@@ -565,25 +570,25 @@ def awards_and_transactions(db):
         "information_technolog_desc": "NOT IT PRODUCTS OR SERVICES",
         "interagency_contract_desc": "NOT APPLICABLE",
         "labor_standards_descrip": "NO",
-        "last_modified": "2001-02-03",
+        "last_modified_date": "2001-02-03",
         "legal_entity_address_line1": "123 main st",
         "legal_entity_address_line2": None,
         "legal_entity_address_line3": None,
-        "legal_entity_city_name": "Charlotte",
-        "legal_entity_congressional": "90",
-        "legal_entity_country_code": "USA",
-        "legal_entity_country_name": "UNITED STATES",
-        "legal_entity_county_code": "019",
-        "legal_entity_county_name": "BUNCOMBE",
-        "legal_entity_state_code": "NC",
-        "legal_entity_state_descrip": "North Carolina",
-        "legal_entity_zip5": "12204",
+        "recipient_location_city_name": "Charlotte",
+        "recipient_location_congressional_code": "90",
+        "recipient_location_country_code": "USA",
+        "recipient_location_country_name": "UNITED STATES",
+        "recipient_location_county_code": "019",
+        "recipient_location_county_name": "BUNCOMBE",
+        "recipient_location_state_code": "NC",
+        "recipient_location_state_name": "North Carolina",
+        "recipient_location_zip5": "12204",
         "legal_entity_zip_last4": "5312",
         "major_program": None,
         "materials_supplies_descrip": "NO",
         "multi_year_contract_desc": "NO",
         "multiple_or_single_aw_desc": None,
-        "naics": "111120",
+        "naics_code": "111120",
         "naics_description": "PUMP AND PUMPING EQUIPMENT MANUFACTURING",
         "number_of_offers_received": None,
         "officer_1_amount": 10000.00,
@@ -591,18 +596,18 @@ def awards_and_transactions(db):
         "officer_2_amount": 1234.00,
         "officer_2_name": "Stan Burger",
         "other_than_full_and_o_desc": None,
-        "place_of_perf_country_desc": "UNITED STATES",
-        "place_of_perform_city_name": "Charlotte",
-        "place_of_perform_country_c": "USA",
-        "place_of_perform_county_co": "019",
-        "place_of_perform_county_na": "BUNCOMBE",
-        "place_of_performance_congr": "90",
-        "place_of_performance_state": "NC",
+        "pop_country_name": "UNITED STATES",
+        "pop_city_name": "Charlotte",
+        "pop_country_code": "USA",
+        "pop_county_code": "019",
+        "pop_county_name": "BUNCOMBE",
+        "pop_congressional_code": "90",
+        "pop_state_code": "NC",
         "place_of_perform_zip_last4": "5312",
-        "place_of_performance_zip5": "12204",
+        "pop_zip5": "12204",
         "period_of_perf_potential_e": "2003-04-05",
         "price_evaluation_adjustmen": None,
-        "product_or_service_co_desc": None,
+        "product_or_service_description": None,
         "product_or_service_code": "M123",
         "program_acronym": None,
         "program_system_or_equipmen": "000",
@@ -617,15 +622,19 @@ def awards_and_transactions(db):
         "type_of_contract_pric_desc": "FIRM FIXED PRICE",
         "type_of_idc_description": None,
         "type_set_aside_description": None,
-        "ultimate_parent_legal_enti": "PARENT LEGAL ENTITY",
-        "ultimate_parent_uei": "ABC",
-        "ultimate_parent_unique_ide": "123",
+        "parent_recipient_name": "PARENT LEGAL ENTITY",
+        "parent_recipient_name_raw": "PARENT LEGAL ENTITY",
+        "parent_uei": "ABC",
+        "parent_recipient_unique_id": "123",
         "national_interest_action": "NONE",
         "national_interest_desc": "NONE",
+        "business_categories": ["small_business"],
     }
     cont_trans_4 = {
-        "pk": 8,
-        "transaction": TransactionNormalized.objects.get(pk=8),
+        "is_fpds": True,
+        "award_id": 7,
+        "generated_unique_award_id": "CONT_AWD_AWARD7_1000_AWARD8_1000",
+        "transaction_id": 8,
         "agency_id": "1000",
         "idv_type_description": None,
         "multiple_or_single_aw_desc": None,
@@ -633,10 +642,13 @@ def awards_and_transactions(db):
         "type_of_idc_description": None,
         "national_interest_action": "NONE",
         "national_interest_desc": "NONE",
+        "business_categories": ["small_business"],
     }
     cont_trans_5 = {
-        "pk": 9,
-        "transaction": TransactionNormalized.objects.get(pk=9),
+        "is_fpds": True,
+        "award_id": 8,
+        "generated_unique_award_id": "CONT_IDV_AWARD8_1000",
+        "transaction_id": 9,
         "agency_id": "1000",
         "idv_type_description": "TYPE DESCRIPTION TRANS 9",
         "multiple_or_single_aw_desc": "AW DESCRIPTION TRANS 9",
@@ -644,10 +656,13 @@ def awards_and_transactions(db):
         "type_of_idc_description": "IDC DESCRIPTION TRANS 9",
         "national_interest_action": "NONE",
         "national_interest_desc": "NONE",
+        "business_categories": ["small_business"],
     }
     cont_trans_6 = {
-        "pk": 10,
-        "transaction": TransactionNormalized.objects.get(pk=10),
+        "is_fpds": True,
+        "award_id": 9,
+        "generated_unique_award_id": "CONT_IDV_AWARD9_1000",
+        "transaction_id": 10,
         "agency_id": "1000",
         "idv_type_description": "TYPE DESCRIPTION TRANS 10",
         "multiple_or_single_aw_desc": "AW DESCRIPTION TRANS 10",
@@ -655,31 +670,35 @@ def awards_and_transactions(db):
         "type_of_idc_description": "IDC DESCRIPTION TRANS 10",
         "national_interest_action": "NONE",
         "national_interest_desc": "NONE",
+        "business_categories": ["small_business"],
     }
     cont_trans_7 = {
-        "pk": 11,
-        "transaction": TransactionNormalized.objects.get(pk=11),
+        "is_fpds": True,
+        "award_id": 10,
+        "generated_unique_award_id": "CONT_AWD_AWARD10_2000",
+        "transaction_id": 11,
         "agency_id": "2000",
         "piid": "AWARD10",
         "legal_entity_zip4": "0000",
         "national_interest_action": "NONE",
         "national_interest_desc": "NONE",
+        "business_categories": ["small_business"],
     }
 
-    mommy.make("awards.TransactionFPDS", **cont_trans_1)
-    mommy.make("awards.TransactionFPDS", **cont_trans_2)
-    mommy.make("awards.TransactionFPDS", **cont_trans_3)
-    mommy.make("awards.TransactionFPDS", **cont_trans_4)
-    mommy.make("awards.TransactionFPDS", **cont_trans_5)
-    mommy.make("awards.TransactionFPDS", **cont_trans_6)
-    mommy.make("awards.TransactionFPDS", **cont_trans_7)
+    baker.make("search.TransactionSearch", **cont_trans_1)
+    baker.make("search.TransactionSearch", **cont_trans_2)
+    baker.make("search.TransactionSearch", **cont_trans_3)
+    baker.make("search.TransactionSearch", **cont_trans_4)
+    baker.make("search.TransactionSearch", **cont_trans_5)
+    baker.make("search.TransactionSearch", **cont_trans_6)
+    baker.make("search.TransactionSearch", **cont_trans_7)
 
     # Awards
     award_1 = {
-        "pk": 1,
-        "awarding_agency": Agency.objects.get(pk=1),
-        "funding_agency": Agency.objects.get(pk=1),
-        "latest_transaction": TransactionNormalized.objects.get(pk=1),
+        "award_id": 1,
+        "awarding_agency_id": 1,
+        "funding_agency_id": 1,
+        "latest_transaction_id": 1,
         "category": "grant",
         "date_signed": "2005-04-03",
         "description": "lorem ipsum",
@@ -695,12 +714,13 @@ def awards_and_transactions(db):
         "type": "11",
         "type_description": "OTHER FINANCIAL ASSISTA1NCE",
         "uri": 1234,
+        "action_date": "2020-01-01",
     }
     award_2 = {
-        "pk": 2,
-        "awarding_agency": Agency.objects.get(pk=1),
-        "funding_agency": Agency.objects.get(pk=1),
-        "latest_transaction": TransactionNormalized.objects.get(pk=2),
+        "award_id": 2,
+        "awarding_agency_id": 1,
+        "funding_agency_id": 1,
+        "latest_transaction_id": 2,
         "base_and_all_options_value": 2000,
         "category": "contract",
         "date_signed": "2004-03-02",
@@ -720,32 +740,34 @@ def awards_and_transactions(db):
         "total_subaward_amount": 12345.00,
         "type": "A",
         "type_description": "DEFINITIVE CONTRACT",
+        "action_date": "2020-01-01",
     }
     award_3 = {
-        "pk": 3,
-        "awarding_agency": Agency.objects.get(pk=1),
-        "funding_agency": Agency.objects.get(pk=1),
-        "latest_transaction": TransactionNormalized.objects.get(pk=3),
+        "award_id": 3,
+        "awarding_agency_id": 1,
+        "funding_agency_id": 1,
+        "latest_transaction_id": 3,
         "base_and_all_options_value": 600,
         "category": "grant",
         "date_signed": "2004-03-02",
         "description": "lorem ipsum",
-        "generated_unique_award_id": "",
+        "generated_unique_award_id": "ASST_NON_0001_0",
         "parent_award_piid": "0001",
         "period_of_performance_current_end_date": "2005-02-04",
         "period_of_performance_start_date": "2004-02-04",
-        "piid": "0001",
+        "fain": "0001",
         "subaward_count": 0,
         "total_obligation": 600,
         "total_subaward_amount": 0,
         "type": "03",
         "type_description": "FORMULA GRANT (A)",
+        "action_date": "2020-01-01",
     }
     award_4 = {
-        "pk": 4,
-        "awarding_agency": Agency.objects.get(pk=1),
-        "funding_agency": Agency.objects.get(pk=1),
-        "latest_transaction": TransactionNormalized.objects.get(pk=3),
+        "award_id": 4,
+        "awarding_agency_id": 1,
+        "funding_agency_id": 1,
+        "latest_transaction_id": 3,
         "base_and_all_options_value": 600,
         "category": "idv",
         "date_signed": "2004-03-02",
@@ -760,12 +782,13 @@ def awards_and_transactions(db):
         "total_subaward_amount": 0,
         "type": "IDV_B",
         "type_description": "INDEFINITE DELIVERY CONTRACT",
+        "action_date": "2020-01-01",
     }
     award_5 = {
-        "pk": 5,
-        "awarding_agency": Agency.objects.get(pk=1),
-        "funding_agency": Agency.objects.get(pk=1),
-        "latest_transaction": TransactionNormalized.objects.get(pk=6),
+        "award_id": 5,
+        "awarding_agency_id": 1,
+        "funding_agency_id": 1,
+        "latest_transaction_id": 6,
         "base_and_all_options_value": 2000,
         "category": "contract",
         "date_signed": "2004-03-02",
@@ -785,12 +808,13 @@ def awards_and_transactions(db):
         "total_subaward_amount": 12345.00,
         "type": "A",
         "type_description": "DEFINITIVE CONTRACT",
+        "action_date": "2020-01-01",
     }
     award_6 = {
-        "pk": 6,
-        "awarding_agency": Agency.objects.get(pk=1),
-        "funding_agency": Agency.objects.get(pk=1),
-        "latest_transaction": TransactionNormalized.objects.get(pk=7),
+        "award_id": 6,
+        "awarding_agency_id": 1,
+        "funding_agency_id": 1,
+        "latest_transaction_id": 7,
         "base_and_all_options_value": 2000,
         "category": "contract",
         "date_signed": "2004-03-02",
@@ -810,72 +834,78 @@ def awards_and_transactions(db):
         "total_subaward_amount": 12345.00,
         "type": "A",
         "type_description": "DEFINITIVE CONTRACT",
+        "action_date": "2020-01-01",
     }
     award_7 = {
-        "pk": 7,
-        "latest_transaction": TransactionNormalized.objects.get(pk=8),
+        "award_id": 7,
+        "latest_transaction_id": 8,
         "category": "contract",
         "fpds_parent_agency_id": 1000,
         "generated_unique_award_id": "CONT_AWD_AWARD7_1000_AWARD8_1000",
         "parent_award_piid": "AWARD8",
         "piid": "AWARD7",
         "type": "A",
+        "action_date": "2020-01-01",
     }
     award_8 = {
-        "pk": 8,
-        "latest_transaction": TransactionNormalized.objects.get(pk=9),
+        "award_id": 8,
+        "latest_transaction_id": 9,
         "category": "idv",
         "fpds_parent_agency_id": 1000,
         "generated_unique_award_id": "CONT_IDV_AWARD8_1000",
         "parent_award_piid": "AWARD9",
         "piid": "AWARD8",
         "type": "IDV_A",
+        "action_date": "2020-01-01",
     }
     award_9 = {
-        "pk": 9,
-        "latest_transaction": TransactionNormalized.objects.get(pk=10),
+        "award_id": 9,
+        "latest_transaction_id": 10,
         "category": "idv",
         "fpds_parent_agency_id": None,
         "generated_unique_award_id": "CONT_IDV_AWARD9_1000",
         "parent_award_piid": None,
         "piid": "AWARD9",
         "type": "IDV_A",
+        "action_date": "2020-01-01",
     }
     award_10 = {
-        "pk": 10,
-        "latest_transaction": TransactionNormalized.objects.get(pk=11),
+        "award_id": 10,
+        "latest_transaction_id": 11,
         "category": "contract",
         "fpds_parent_agency_id": None,
         "generated_unique_award_id": "CONT_AWD_AWARD10_2000",
         "parent_award_piid": None,
         "piid": "AWARD10",
         "type": "A",
+        "action_date": "2020-01-01",
     }
     award_11 = {
-        "pk": 11,
+        "award_id": 11,
         "type": "03",
         "type_description": "FORMULA GRANT (A)",
         "category": "grant",
         "piid": "000",
         "parent_award_piid": "000",
         "description": "lorem ipsum",
-        "awarding_agency": Agency.objects.get(pk=1),
-        "funding_agency": Agency.objects.get(pk=1),
+        "awarding_agency_id": 1,
+        "funding_agency_id": 1,
         "total_obligation": 600,
         "base_and_all_options_value": 600,
         "period_of_performance_start_date": "2004-02-04",
         "period_of_performance_current_end_date": "2005-02-04",
         "generated_unique_award_id": "ASST_NON_:~$@*\"()#/,^&+=`!'%/_. -_9700",
-        "latest_transaction": TransactionNormalized.objects.get(pk=3),
+        "latest_transaction_id": 3,
         "total_subaward_amount": 0,
         "subaward_count": 0,
         "date_signed": "2004-03-02",
+        "action_date": "2020-01-01",
     }
     award_13 = {
-        "pk": 13,
-        "awarding_agency": Agency.objects.get(pk=1),
-        "funding_agency": Agency.objects.get(pk=1),
-        "latest_transaction": TransactionNormalized.objects.get(pk=13),
+        "award_id": 13,
+        "awarding_agency_id": 1,
+        "funding_agency_id": 1,
+        "latest_transaction_id": 13,
         "category": "grant",
         "date_signed": "2005-04-03",
         "description": "lorem ipsum",
@@ -891,20 +921,21 @@ def awards_and_transactions(db):
         "type": "11",
         "type_description": "OTHER FINANCIAL ASSISTA1NCE",
         "uri": 1234,
+        "action_date": "2020-01-01",
     }
 
-    mommy.make("awards.Award", **award_1)
-    mommy.make("awards.Award", **award_2)
-    mommy.make("awards.Award", **award_3)
-    mommy.make("awards.Award", **award_4)
-    mommy.make("awards.Award", **award_5)
-    mommy.make("awards.Award", **award_6)
-    mommy.make("awards.Award", **award_7)
-    mommy.make("awards.Award", **award_8)
-    mommy.make("awards.Award", **award_9)
-    mommy.make("awards.Award", **award_10)
-    mommy.make("awards.Award", **award_11)
-    mommy.make("awards.Award", **award_13)
+    baker.make("search.AwardSearch", **award_1)
+    baker.make("search.AwardSearch", **award_2)
+    baker.make("search.AwardSearch", **award_3)
+    baker.make("search.AwardSearch", **award_4)
+    baker.make("search.AwardSearch", **award_5)
+    baker.make("search.AwardSearch", **award_6)
+    baker.make("search.AwardSearch", **award_7)
+    baker.make("search.AwardSearch", **award_8)
+    baker.make("search.AwardSearch", **award_9)
+    baker.make("search.AwardSearch", **award_10)
+    baker.make("search.AwardSearch", **award_11)
+    baker.make("search.AwardSearch", **award_13)
 
     # Parent Award
     parent_award_1 = {
@@ -925,18 +956,18 @@ def awards_and_transactions(db):
     parent_award_2 = {"award_id": 8, "generated_unique_award_id": "CONT_IDV_AWARD8_1000", "parent_award_id": 9}
     parent_award_3 = {"award_id": 9, "generated_unique_award_id": "CONT_IDV_AWARD9_1000", "parent_award_id": None}
 
-    mommy.make("awards.ParentAward", **parent_award_1)
-    mommy.make("awards.ParentAward", **parent_award_2)
-    mommy.make("awards.ParentAward", **parent_award_3)
+    baker.make("awards.ParentAward", **parent_award_1)
+    baker.make("awards.ParentAward", **parent_award_2)
+    baker.make("awards.ParentAward", **parent_award_3)
 
-    dsws1 = mommy.make("submissions.DABSSubmissionWindowSchedule", submission_reveal_date="2020-01-01")
-    mommy.make("submissions.SubmissionAttributes", toptier_code="ABC", submission_window=dsws1)
+    dsws1 = baker.make("submissions.DABSSubmissionWindowSchedule", submission_reveal_date="2020-01-01")
+    baker.make("submissions.SubmissionAttributes", toptier_code="ABC", submission_window=dsws1)
 
 
 @pytest.fixture
 def update_awards(db):
-    mommy.make("awards.Award", pk=11)
-    mommy.make("awards.Award", pk=12)
+    baker.make("search.AwardSearch", award_id=11)
+    baker.make("search.AwardSearch", award_id=12)
 
 
 def test_award_last_updated_endpoint(client, update_awards):
@@ -967,9 +998,9 @@ def test_award_endpoint_generated_id(client, awards_and_transactions):
 
 def test_award_endpoint_parent_award(client, awards_and_transactions):
 
-    dsws1 = mommy.make("submissions.DABSSubmissionWindowSchedule", submission_reveal_date="2020-01-01")
-    mommy.make("submissions.SubmissionAttributes", toptier_code="ABC", submission_window=dsws1)
-    mommy.make("submissions.SubmissionAttributes", toptier_code="002", submission_window=dsws1)
+    dsws1 = baker.make("submissions.DABSSubmissionWindowSchedule", submission_reveal_date="2020-01-01")
+    baker.make("submissions.SubmissionAttributes", toptier_code="ABC", submission_window=dsws1)
+    baker.make("submissions.SubmissionAttributes", toptier_code="002", submission_window=dsws1)
 
     # Test contract award with parent
     resp = client.get("/api/v2/awards/7/")
@@ -1116,8 +1147,8 @@ def test_zip4_switch(client, awards_and_transactions):
 
 
 def test_file_c_data(client, awards_and_transactions):
-    defc = mommy.make("references.DisasterEmergencyFundCode", code="L", group_name="covid_19")
-    mommy.make(
+    defc = baker.make("references.DisasterEmergencyFundCode", code="L")
+    baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         submission_fiscal_year=2019,
         submission_fiscal_month=12,
@@ -1125,7 +1156,7 @@ def test_file_c_data(client, awards_and_transactions):
         submission_reveal_date="2020-04-01",
         period_start_date="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         submission_fiscal_year=2018,
         submission_fiscal_month=12,
@@ -1133,7 +1164,7 @@ def test_file_c_data(client, awards_and_transactions):
         submission_reveal_date="2020-04-01",
         period_start_date="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         submission_fiscal_year=2020,
         submission_fiscal_month=12,
@@ -1141,7 +1172,7 @@ def test_file_c_data(client, awards_and_transactions):
         submission_reveal_date="2020-04-01",
         period_start_date="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "submissions.SubmissionAttributes",
         pk=2,
         reporting_fiscal_period=8,
@@ -1151,7 +1182,7 @@ def test_file_c_data(client, awards_and_transactions):
         is_final_balances_for_fy=False,
         reporting_period_start="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         award_id=1,
         transaction_obligated_amount=100,
@@ -1166,7 +1197,7 @@ def test_file_c_data(client, awards_and_transactions):
     assert json.loads(resp.content.decode("utf-8"))["account_outlays_by_defc"] == [{"code": "L", "amount": 0.0}]
     assert json.loads(resp.content.decode("utf-8"))["total_account_obligation"] == 100.0
     assert json.loads(resp.content.decode("utf-8"))["total_account_outlay"] == 0.0
-    mommy.make(
+    baker.make(
         "submissions.SubmissionAttributes",
         pk=1,
         reporting_fiscal_period=12,
@@ -1176,7 +1207,7 @@ def test_file_c_data(client, awards_and_transactions):
         is_final_balances_for_fy=True,
         reporting_period_start="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         award_id=1,
         transaction_obligated_amount=100,
@@ -1191,7 +1222,7 @@ def test_file_c_data(client, awards_and_transactions):
     assert json.loads(resp.content.decode("utf-8"))["account_outlays_by_defc"] == [{"code": "L", "amount": 100.0}]
     assert json.loads(resp.content.decode("utf-8"))["total_account_obligation"] == 200.0
     assert json.loads(resp.content.decode("utf-8"))["total_account_outlay"] == 100.0
-    mommy.make(
+    baker.make(
         "submissions.SubmissionAttributes",
         pk=3,
         reporting_fiscal_period=10,
@@ -1201,7 +1232,7 @@ def test_file_c_data(client, awards_and_transactions):
         is_final_balances_for_fy=False,
         reporting_period_start="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         award_id=1,
         transaction_obligated_amount=10,
@@ -1216,7 +1247,7 @@ def test_file_c_data(client, awards_and_transactions):
     assert json.loads(resp.content.decode("utf-8"))["account_outlays_by_defc"] == [{"code": "L", "amount": 100.0}]
     assert json.loads(resp.content.decode("utf-8"))["total_account_obligation"] == 210.0
     assert json.loads(resp.content.decode("utf-8"))["total_account_outlay"] == 100.0
-    mommy.make(
+    baker.make(
         "submissions.SubmissionAttributes",
         pk=4,
         reporting_fiscal_period=12,
@@ -1226,7 +1257,7 @@ def test_file_c_data(client, awards_and_transactions):
         is_final_balances_for_fy=True,
         reporting_period_start="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         award_id=1,
         transaction_obligated_amount=10,
@@ -1241,7 +1272,7 @@ def test_file_c_data(client, awards_and_transactions):
     assert json.loads(resp.content.decode("utf-8"))["account_outlays_by_defc"] == [{"code": "L", "amount": 110.0}]
     assert json.loads(resp.content.decode("utf-8"))["total_account_obligation"] == 220.0
     assert json.loads(resp.content.decode("utf-8"))["total_account_outlay"] == 110.0
-    mommy.make(
+    baker.make(
         "submissions.SubmissionAttributes",
         pk=5,
         reporting_fiscal_period=12,
@@ -1250,7 +1281,7 @@ def test_file_c_data(client, awards_and_transactions):
         reporting_period_end="2020-06-30",
         quarter_format_flag=True,
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         award_id=1,
         transaction_obligated_amount=0,
@@ -1268,8 +1299,8 @@ def test_file_c_data(client, awards_and_transactions):
 
 
 def test_outlay_calculations(client, awards_and_transactions):
-    defc = mommy.make("references.DisasterEmergencyFundCode", code="L", group_name="covid_19")
-    mommy.make(
+    defc = baker.make("references.DisasterEmergencyFundCode", code="L")
+    baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         submission_fiscal_year=2019,
         submission_fiscal_month=12,
@@ -1277,7 +1308,7 @@ def test_outlay_calculations(client, awards_and_transactions):
         submission_reveal_date="2020-04-01",
         period_start_date="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "submissions.SubmissionAttributes",
         pk=4,
         reporting_fiscal_period=12,
@@ -1287,7 +1318,7 @@ def test_outlay_calculations(client, awards_and_transactions):
         is_final_balances_for_fy=True,
         reporting_period_start="2020-04-01",
     )
-    mommy.make(
+    baker.make(
         "awards.FinancialAccountsByAwards",
         award_id=1,
         transaction_obligated_amount=10,

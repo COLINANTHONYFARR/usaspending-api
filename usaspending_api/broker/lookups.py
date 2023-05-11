@@ -11,6 +11,7 @@ EXTERNAL_DATA_TYPE = [
     LookupType(1, "fpds", "FPDS transactions from Broker"),
     LookupType(2, "fabs", "FABS transactions from Broker"),
     LookupType(3, "exec_comp", "Executive Compensation from Broker"),
+    LookupType(4, "zips", "Zip code data from broker"),
     LookupType(10, "source_procurement_transaction", "source FPDS transaction records"),
     LookupType(11, "source_assistance_transaction", "source FABS transaction records"),
     # "opposite" side of the broker data load, data from USAspending DB -> Elasticsearch
@@ -19,6 +20,13 @@ EXTERNAL_DATA_TYPE = [
     LookupType(102, "es_deletes", "Award and Transaction deletions from elasticsearch"),
     # Additional times to keep track of
     LookupType(120, "touch_last_period_awards", "Touch awards from last period, so they will be updated in ES"),
+    # Transaction ETL types for delta
+    LookupType(201, "transaction_fpds", "FPDS transactions in Delta"),
+    LookupType(202, "transaction_fabs", "FABS transactions in Delta"),
+    LookupType(203, "transaction_normalized", "Normalized transactions in Delta"),
+    LookupType(204, "awards", "Awards in Delta"),
+    LookupType(205, "transaction_id_lookup", "Transaction IDs in Delta"),
+    LookupType(206, "award_id_lookup", "Award IDs in Delta"),
 ]
 EXTERNAL_DATA_TYPE_DICT = {item.name: item.id for item in EXTERNAL_DATA_TYPE}
 EXTERNAL_DATA_TYPE_DICT_ID = {item.id: item.name for item in EXTERNAL_DATA_TYPE}

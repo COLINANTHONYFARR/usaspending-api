@@ -11,7 +11,7 @@ txn_earliest AS (
     tn.action_date,
     tn.description,
     tn.period_of_performance_start_date
-  FROM transaction_normalized tn
+  FROM vw_transaction_normalized tn
   {predicate}
   ORDER BY tn.award_id, tn.action_date ASC, tn.modification_number ASC, tn.transaction_unique_id ASC
 ),
@@ -36,7 +36,7 @@ txn_latest AS (
       WHEN tn.type LIKE 'IDV%%'                 THEN 'idv'
       ELSE NULL
     END AS category
-  FROM transaction_normalized tn
+  FROM vw_transaction_normalized tn
   {predicate}
   ORDER BY tn.award_id, tn.action_date DESC, tn.modification_number DESC, tn.transaction_unique_id DESC
 ),
@@ -47,12 +47,13 @@ txn_totals AS (
     SUM(tn.original_loan_subsidy_cost)  AS total_subsidy_cost,
     SUM(tn.funding_amount)              AS total_funding_amount,
     SUM(tn.face_value_loan_guarantee)   AS total_loan_value,
-    SUM(tn.non_federal_funding_amount)  AS non_federal_funding_amount
-  FROM transaction_normalized tn
+    SUM(tn.non_federal_funding_amount)  AS non_federal_funding_amount,
+    SUM(tn.indirect_federal_sharing)    AS total_indirect_federal_sharing
+  FROM vw_transaction_normalized tn
   {predicate}
   GROUP BY tn.award_id
 )
-UPDATE awards a
+UPDATE award_search a
 SET
   update_date                             = now(),
 
@@ -76,14 +77,15 @@ SET
   total_funding_amount                    = t.total_funding_amount,
   total_loan_value                        = t.total_loan_value,
   total_obligation                        = t.total_obligation,
-  total_subsidy_cost                      = t.total_subsidy_cost
+  total_subsidy_cost                      = t.total_subsidy_cost,
+  total_indirect_federal_sharing          = t.total_indirect_federal_sharing
 
 FROM txn_earliest e
 INNER JOIN txn_latest   l ON e.award_id = l.award_id
 INNER JOIN txn_totals   t ON e.award_id = t.award_id
 
 WHERE
-  e.award_id = a.id
+  e.award_id = a.award_id
   AND (
        a.earliest_transaction_id                 IS DISTINCT FROM e.id
     OR a.date_signed                             IS DISTINCT FROM e.action_date
@@ -104,6 +106,7 @@ WHERE
     OR a.total_loan_value                        IS DISTINCT FROM t.total_loan_value
     OR a.total_obligation                        IS DISTINCT FROM t.total_obligation
     OR a.total_subsidy_cost                      IS DISTINCT FROM t.total_subsidy_cost
+    or a.total_indirect_federal_sharing          IS DISTINCT FROM t.total_indirect_federal_sharing
   )
 """
 
@@ -114,8 +117,8 @@ fpds_totals AS (
     tn.award_id,
     SUM(tf.base_and_all_options_value::NUMERIC(23,2)) AS total_base_and_options_value,
     SUM(tf.base_exercised_options_val::NUMERIC(23,2)) AS base_exercised_options_val
-  FROM transaction_normalized AS tn
-  INNER JOIN transaction_fpds AS tf ON tn.id = tf.transaction_id
+  FROM vw_transaction_normalized AS tn
+  INNER JOIN vw_transaction_fpds AS tf ON tn.id = tf.transaction_id
   {predicate}
   GROUP BY tn.award_id
 ),
@@ -124,8 +127,8 @@ txn_latest AS (
     tn.award_id,
     tf.agency_id,
     tf.referenced_idv_agency_iden
-  FROM transaction_normalized AS tn
-  INNER JOIN transaction_fpds AS tf ON tn.id = tf.transaction_id
+  FROM vw_transaction_normalized AS tn
+  INNER JOIN vw_transaction_fpds AS tf ON tn.id = tf.transaction_id
   {predicate}
   ORDER BY tn.award_id, tn.action_date DESC, tn.modification_number DESC, tn.transaction_unique_id DESC
 ),
@@ -143,14 +146,14 @@ executive_comp AS (
       fpds.officer_4_name,
       fpds.officer_5_amount,
       fpds.officer_5_name
-    FROM transaction_normalized tn
-    INNER JOIN transaction_fpds AS fpds ON tn.id = fpds.transaction_id
+    FROM vw_transaction_normalized tn
+    INNER JOIN vw_transaction_fpds AS fpds ON tn.id = fpds.transaction_id
     {predicate}
     ORDER BY tn.award_id, tn.action_date DESC, tn.modification_number DESC, tn.transaction_unique_id DESC
   )
   SELECT DISTINCT ON (award_id) * FROM sub_cte_all_transactions WHERE officer_1_name is not null
 )
-UPDATE awards a
+UPDATE award_search a
 SET
   update_date                 = now(),
   base_and_all_options_value  = t.total_base_and_options_value,
@@ -173,7 +176,7 @@ FROM fpds_totals AS t
 INNER JOIN txn_latest AS l ON t.award_id = l.award_id
 LEFT OUTER JOIN executive_comp AS ec ON t.award_id = ec.award_id
 WHERE
-  t.award_id = a.id
+  t.award_id = a.award_id
   AND (
         a.base_and_all_options_value IS DISTINCT FROM t.total_base_and_options_value
      OR a.base_exercised_options_val IS DISTINCT FROM t.base_exercised_options_val
@@ -208,14 +211,14 @@ WITH
         fabs.officer_4_name,
         fabs.officer_5_amount,
         fabs.officer_5_name
-      FROM transaction_normalized tn
-      INNER JOIN transaction_fabs AS fabs ON tn.id = fabs.transaction_id
+      FROM vw_transaction_normalized tn
+      INNER JOIN vw_transaction_fabs AS fabs ON tn.id = fabs.transaction_id
       {predicate}
       ORDER BY tn.award_id, tn.action_date DESC, tn.modification_number DESC, tn.transaction_unique_id DESC
     )
     SELECT DISTINCT ON (award_id) * FROM sub_cte_all_transactions WHERE officer_1_name is not null
 )
-UPDATE awards a
+UPDATE award_search a
 SET
   update_date       = now(),
   officer_1_amount  = ec.officer_1_amount,
@@ -230,7 +233,7 @@ SET
   officer_5_name    = ec.officer_5_name
 FROM executive_comp AS ec
 WHERE
-  ec.award_id = a.id
+  ec.award_id = a.award_id
   AND (
        a.officer_1_amount IS DISTINCT FROM ec.officer_1_amount
     OR a.officer_1_name   IS DISTINCT FROM ec.officer_1_name
@@ -256,14 +259,14 @@ subaward_award_update_sql_string = """
     {predicate}
     GROUP BY award_id
   )
-  UPDATE awards a
+  UPDATE award_search a
     SET
       update_date           = now(),
       total_subaward_amount = subaward_totals.total_subaward_amount,
       subaward_count        = subaward_totals.subaward_count
     FROM subaward_totals
     WHERE
-      subaward_totals.award_id = a.id
+      subaward_totals.award_id = a.award_id
       AND (
            a.total_subaward_amount  IS DISTINCT FROM subaward_totals.total_subaward_amount
         OR a.subaward_count         IS DISTINCT FROM subaward_totals.subaward_count
@@ -286,7 +289,7 @@ def execute_database_statement(sql: str, values: Optional[list] = None) -> int:
 
 def convert_award_id_to_guai(award_tuple: tuple) -> tuple:
     """Scafolding code between award PK ids and unique award ids"""
-    sql = "SELECT generated_unique_award_id FROM awards WHERE id IN %s"
+    sql = "SELECT generated_unique_award_id FROM vw_awards WHERE id IN %s"
     values = [award_tuple]
     with connection.cursor() as cursor:
         cursor.execute(sql, values)
@@ -309,14 +312,16 @@ def update_awards(award_tuple: Optional[tuple] = None) -> int:
 def prune_empty_awards(award_tuple: Optional[tuple] = None) -> int:
     _find_empty_awards_sql = """
         SELECT a.id
-        FROM awards a
-        LEFT JOIN transaction_normalized tn ON tn.award_id = a.id
+        FROM vw_awards a
+        LEFT JOIN vw_transaction_normalized tn ON tn.award_id = a.id
         WHERE tn IS NULL {}
     """.format(
         "AND a.id IN %s" if award_tuple else ""
     )
 
-    _modify_subawards_sql = "UPDATE subaward SET award_id = null WHERE award_id IN ({});".format(_find_empty_awards_sql)
+    _modify_subawards_sql = "UPDATE subaward_search SET award_id = null WHERE award_id IN ({});".format(
+        _find_empty_awards_sql
+    )
 
     _modify_financial_accounts_sql = """
       UPDATE financial_accounts_by_awards
@@ -330,7 +335,7 @@ def prune_empty_awards(award_tuple: Optional[tuple] = None) -> int:
 
     _delete_parent_award_sql = "DELETE FROM parent_award WHERE award_id in ({});".format(_find_empty_awards_sql)
 
-    _prune_empty_awards_sql = "DELETE FROM awards WHERE id IN ({}) ".format(_find_empty_awards_sql)
+    _prune_empty_awards_sql = "DELETE FROM award_search WHERE award_id IN ({}) ".format(_find_empty_awards_sql)
 
     return execute_database_statement(
         _modify_subawards_sql + _modify_financial_accounts_sql + _delete_parent_award_sql + _prune_empty_awards_sql,

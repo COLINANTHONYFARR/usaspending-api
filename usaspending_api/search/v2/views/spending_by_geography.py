@@ -1,13 +1,12 @@
 import copy
-import json
 import logging
 
 from decimal import Decimal
 from enum import Enum
 
 from django.conf import settings
-from django.db.models import Sum, FloatField, QuerySet
-from django.db.models.functions import Cast
+from django.db.models import Sum, FloatField, QuerySet, F, Value, TextField
+from django.db.models.functions import Cast, Concat
 from elasticsearch_dsl import A, Q as ES_Q
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -25,7 +24,7 @@ from usaspending_api.common.validator.award_filter import AWARD_FILTER
 from usaspending_api.common.validator.tinyshield import TinyShield
 from usaspending_api.references.abbreviations import code_to_state, fips_to_code, pad_codes
 from usaspending_api.references.models import PopCounty, PopCongressionalDistrict
-from usaspending_api.search.models import SubawardView
+from usaspending_api.search.models import SubawardSearch
 from usaspending_api.search.v2.elasticsearch_helper import (
     get_scaled_sum_aggregations,
     get_number_of_unique_terms_for_transactions,
@@ -96,28 +95,62 @@ class SpendingByGeographyVisualizationViewSet(APIView):
             "district": "congressional_agg_key",
             "state": "state_agg_key",
         }
-        location_dict = {"county": "county_code", "district": "congressional_code", "state": "state_code"}
         model_dict = {
-            "place_of_performance": "pop",
-            "recipient_location": "recipient_location",
-            # 'subawards_place_of_performance': 'pop',
-            # 'subawards_recipient_location': 'recipient_location'
+            "place_of_performance": {"prime": "pop", "sub": "sub_place_of_perform"},
+            "recipient_location": {"prime": "recipient_location", "sub": "sub_legal_entity"},
+        }
+        # Most of these are the same but some of slightly off, so we can track all the nuances here
+        self.location_dict = {
+            "code": {
+                "country": {
+                    "prime": {"pop": "country_co", "recipient_location": "country_code"},
+                    "sub": {"sub_place_of_perform": "country_co", "sub_legal_entity": "country_code"},
+                },
+                "county": {
+                    "prime": {"pop": "county_code", "recipient_location": "county_code"},
+                    "sub": {"sub_place_of_perform": "county_code", "sub_legal_entity": "county_code"},
+                },
+                "district": {
+                    "prime": {"pop": "congressional", "recipient_location": "congressional"},
+                    "sub": {"sub_place_of_perform": "congressio", "sub_legal_entity": "congressional"},
+                },
+                "state": {
+                    "prime": {"pop": "state_code", "recipient_location": "state_code"},
+                    "sub": {"sub_place_of_perform": "state_code", "sub_legal_entity": "state_code"},
+                },
+            },
+            "name": {
+                "country": {
+                    "prime": {"pop": "country_na", "recipient_location": "country_name"},
+                    "sub": {"sub_place_of_perform": "country_na", "sub_legal_entity": "country_name"},
+                },
+                "county": {
+                    "sub": {"sub_place_of_perform": "county_name", "sub_legal_entity": "county_name"},
+                },
+                "state": {
+                    "prime": {"pop": "state_name", "recipient_location": "state_name"},
+                    "sub": {"sub_place_of_perform": "state_name", "sub_legal_entity": "state_name"},
+                },
+            },
         }
 
-        self.scope_field_name = model_dict[json_request["scope"]]
+        self.subawards = json_request["subawards"]
+        self.award_or_sub_str = "sub" if self.subawards else "prime"
+        self.scope_field_name = model_dict[json_request["scope"]][self.award_or_sub_str]
         self.agg_key = f"{self.scope_field_name}_{agg_key_dict[json_request['geo_layer']]}"
         self.filters = json_request.get("filters")
         self.geo_layer = GeoLayer(json_request["geo_layer"])
         self.geo_layer_filters = json_request.get("geo_layer_filters")
-        self.loc_field_name = location_dict[self.geo_layer.value]
+        self.loc_field_name = self.location_dict["code"][self.geo_layer.value][self.award_or_sub_str][
+            self.scope_field_name
+        ]
         self.loc_lookup = f"{self.scope_field_name}_{self.loc_field_name}"
-        self.subawards = json_request["subawards"]
 
         if self.subawards:
             # We do not use matviews for Subaward filtering, just the Subaward download filters
-            self.model_name = SubawardView
+            self.model_name = SubawardSearch
             self.queryset = subaward_filter(self.filters)
-            self.obligation_column = "amount"
+            self.obligation_column = "subaward_amount"
             result = self.query_django()
         else:
             if self.scope_field_name == "pop":
@@ -150,7 +183,9 @@ class SpendingByGeographyVisualizationViewSet(APIView):
         if self.geo_layer == GeoLayer.STATE:
             # State will have one field (state_code) containing letter A-Z
             column_isnull = f"{self.obligation_column}__isnull"
-            kwargs = {f"{self.scope_field_name}_country_code": "USA", column_isnull: False}
+
+            cc_col = self.location_dict["code"]["country"][self.award_or_sub_str][self.scope_field_name]
+            kwargs = {f"{self.scope_field_name}_{cc_col}": "USA", column_isnull: False}
 
             # Only state scope will add its own state code
             # State codes are consistent in database i.e. AL, AK
@@ -161,7 +196,8 @@ class SpendingByGeographyVisualizationViewSet(APIView):
         else:
             # County and district scope will need to select multiple fields
             # State code is needed for county/district aggregation
-            state_lookup = f"{self.scope_field_name}_state_code"
+            state_col = self.location_dict["code"]["state"][self.award_or_sub_str][self.scope_field_name]
+            state_lookup = f"{self.scope_field_name}_{state_col}"
             fields_list.append(state_lookup)
 
             # Adding regex to county/district codes to remove entries with letters since can't be surfaced by map
@@ -169,7 +205,9 @@ class SpendingByGeographyVisualizationViewSet(APIView):
 
             if self.geo_layer == GeoLayer.COUNTY:
                 # County name added to aggregation since consistent in db
-                county_name_lookup = f"{self.scope_field_name}_county_name"
+
+                county_col = self.location_dict["name"]["county"][self.award_or_sub_str][self.scope_field_name]
+                county_name_lookup = f"{self.scope_field_name}_{county_col}"
                 fields_list.append(county_name_lookup)
                 geo_queryset = self.county_district_queryset(
                     kwargs, fields_list, self.loc_lookup, state_lookup, self.scope_field_name
@@ -196,7 +234,7 @@ class SpendingByGeographyVisualizationViewSet(APIView):
         geo_queryset = self.queryset.filter(**filter_args).values(*lookup_fields)
 
         if self.subawards:
-            geo_queryset = geo_queryset.annotate(transaction_amount=Sum("amount"))
+            geo_queryset = geo_queryset.annotate(transaction_amount=Sum("subaward_amount"))
         else:
             geo_queryset = geo_queryset.annotate(transaction_amount=Sum("generated_pragmatic_obligation")).values(
                 "transaction_amount", *lookup_fields
@@ -254,7 +292,7 @@ class SpendingByGeographyVisualizationViewSet(APIView):
         )
 
         if self.subawards:
-            geo_queryset = geo_queryset.annotate(transaction_amount=Sum("amount"))
+            geo_queryset = geo_queryset.annotate(transaction_amount=Sum("subaward_amount"))
         else:
             geo_queryset = geo_queryset.annotate(transaction_amount=Sum("generated_pragmatic_obligation")).values(
                 "transaction_amount", "code_as_float", *fields_list
@@ -342,25 +380,69 @@ class SpendingByGeographyVisualizationViewSet(APIView):
         return search
 
     def build_elasticsearch_result(self, response: dict) -> Dict[str, dict]:
-        results = {}
-        geo_info_buckets = response.get("group_by_agg_key", {}).get("buckets", [])
-        for bucket in geo_info_buckets:
-            geo_info = json.loads(bucket.get("key"))
+        def _key_to_geo_code(key):
+            return f"{code_to_state[key[:2]]['fips']}{key[2:]}" if (key and key[:2] in code_to_state) else None
 
-            if self.geo_layer == GeoLayer.STATE:
-                display_name = (geo_info.get("state_name") or "").title()
-                shape_code = (geo_info.get("state_code") or "").upper()
-            elif self.geo_layer == GeoLayer.COUNTY:
-                state_fips = geo_info.get("state_fips") or ""
-                county_code = geo_info.get("county_code") or ""
-                display_name = (geo_info.get("county_name") or "").title()
-                shape_code = f"{state_fips}{county_code}"
-            else:
-                state_code = geo_info.get("state_code") or ""
-                state_fips = geo_info.get("state_fips") or ""
-                congressional_code = geo_info.get("congressional_code") or ""
-                display_name = f"{state_code}-{congressional_code}".upper()
-                shape_code = f"{state_fips}{congressional_code}"
+        # Get the codes
+        geo_info_buckets = response.get("group_by_agg_key", {}).get("buckets", [])
+        geo_codes = [_key_to_geo_code(bucket["key"]) for bucket in geo_info_buckets if bucket.get("key")]
+
+        # Get the current geo info
+        current_geo_info = {}
+        if self.geo_layer == GeoLayer.STATE:
+            geo_info_query = (
+                PopCounty.objects.filter(state_code__in=geo_codes, county_number="000")
+                .annotate(
+                    geo_code=F("state_code"),
+                    display_name=F("state_name"),
+                    population=F("latest_population"),
+                    shape_code=F("state_code"),
+                )
+                .values("geo_code", "display_name", "population", "shape_code")
+            )
+        elif self.geo_layer == GeoLayer.COUNTY:
+            geo_info_query = (
+                PopCounty.objects.annotate(shape_code=Concat("state_code", "county_number", output_field=TextField()))
+                .filter(shape_code__in=geo_codes)
+                .annotate(
+                    geo_code=F("county_number"),
+                    display_name=F("county_name"),
+                    population=F("latest_population"),
+                )
+                .values("geo_code", "display_name", "shape_code", "population")
+            )
+        else:
+            geo_info_query = (
+                PopCongressionalDistrict.objects.annotate(
+                    shape_code=Concat("state_code", "congressional_district", output_field=TextField())
+                )
+                .filter(shape_code__in=geo_codes)
+                .annotate(
+                    geo_code=F("congressional_district"),
+                    display_name=Concat(
+                        "state_abbreviation", Value("-"), "congressional_district", output_field=TextField()
+                    ),
+                    population=F("latest_population"),
+                )
+                .values("geo_code", "display_name", "shape_code", "population")
+            )
+        for geo_info in geo_info_query.all():
+            current_geo_info[geo_info["shape_code"]] = geo_info
+
+        # Build out the results
+        results = {}
+        for bucket in geo_info_buckets:
+            bucket_shape_code = _key_to_geo_code(bucket.get("key"))
+            geo_info = current_geo_info.get(bucket_shape_code) or {"shape_code": ""}
+
+            if geo_info["shape_code"]:
+                if self.geo_layer == GeoLayer.STATE:
+                    geo_info["display_name"] = geo_info["display_name"].title()
+                    geo_info["shape_code"] = fips_to_code[geo_info["shape_code"]].upper()
+                elif self.geo_layer == GeoLayer.COUNTY:
+                    geo_info["display_name"] = geo_info["display_name"].title()
+                else:
+                    geo_info["display_name"] = geo_info["display_name"].upper()
 
             per_capita = None
             aggregated_amount = int(bucket.get("sum_field", {"value": 0})["value"]) / Decimal("100")
@@ -368,14 +450,13 @@ class SpendingByGeographyVisualizationViewSet(APIView):
             if population:
                 per_capita = (Decimal(aggregated_amount) / Decimal(population)).quantize(Decimal(".01"))
 
-            results[shape_code] = {
-                "shape_code": shape_code or None,
+            results[geo_info["shape_code"]] = {
+                "shape_code": geo_info["shape_code"],
+                "display_name": geo_info.get("display_name"),
                 "aggregated_amount": aggregated_amount,
-                "display_name": display_name or None,
                 "population": population,
                 "per_capita": per_capita,
             }
-
         return results
 
     def query_elasticsearch(self, filter_query: ES_Q) -> list:

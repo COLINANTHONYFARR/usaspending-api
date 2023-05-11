@@ -2,6 +2,7 @@ import json
 import logging
 import multiprocessing
 import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Tuple, List
 
@@ -20,7 +21,6 @@ from django.conf import settings
 
 from usaspending_api.download.models.download_job_lookup import DownloadJobLookup
 from usaspending_api.settings import MAX_DOWNLOAD_LIMIT
-from usaspending_api.awards.v2.filters.filter_helpers import add_date_range_comparison_types
 from usaspending_api.awards.v2.lookups.lookups import contract_type_mapping, assistance_type_mapping, idv_type_mapping
 from usaspending_api.common.csv_helpers import count_rows_in_delimited_file, partition_large_delimited_file
 from usaspending_api.common.exceptions import InvalidParameterException
@@ -181,12 +181,17 @@ def get_download_sources(json_request: dict, download_job: DownloadJob = None, o
 
             # Use correct date range columns for advanced search
             # (Will not change anything for keyword search since "time_period" is not provided))
-            filters = add_date_range_comparison_types(
-                json_request["filters"],
-                is_subaward=download_type != "awards",
-                gte_date_type="action_date",
-                lte_date_type="date_signed",
-            )
+            filters = deepcopy(json_request["filters"])
+            if (download_type == "elasticsearch_awards" or download_type == "awards") and json_request["filters"].get(
+                "time_period"
+            ) is not None:
+                for time_period in filters["time_period"]:
+                    time_period["gte_date_type"] = time_period.get("date_type", "action_date")
+                    time_period["lte_date_type"] = time_period.get("date_type", "date_signed")
+            if json_request["filters"].get("time_period") is not None and download_type == "sub_awards":
+                for time_period in filters["time_period"]:
+                    if time_period.get("date_type") == "date_signed":
+                        time_period["date_type"] = "action_date"
             if download_type == "elasticsearch_awards" or download_type == "elasticsearch_transactions":
                 queryset = filter_function(filters, download_job=download_job)
             else:
@@ -205,7 +210,7 @@ def get_download_sources(json_request: dict, download_job: DownloadJob = None, o
                 d1_source = DownloadSource(
                     VALUE_MAPPINGS[download_type]["table_name"], "d1", download_type, agency_id, filters
                 )
-                d1_filters = {f"{VALUE_MAPPINGS[download_type]['contract_data']}__isnull": False}
+                d1_filters = {f"{VALUE_MAPPINGS[download_type].get('is_fpds_join', '')}is_fpds": True}
                 d1_source.queryset = queryset & download_type_table.objects.filter(**d1_filters)
                 download_sources.append(d1_source)
 
@@ -214,23 +219,77 @@ def get_download_sources(json_request: dict, download_job: DownloadJob = None, o
                 d2_source = DownloadSource(
                     VALUE_MAPPINGS[download_type]["table_name"], "d2", download_type, agency_id, filters
                 )
-                d2_filters = {f"{VALUE_MAPPINGS[download_type]['assistance_data']}__isnull": False}
+                d2_filters = {f"{VALUE_MAPPINGS[download_type].get('is_fpds_join', '')}is_fpds": False}
                 d2_source.queryset = queryset & download_type_table.objects.filter(**d2_filters)
                 download_sources.append(d2_source)
 
         elif VALUE_MAPPINGS[download_type]["source_type"] == "account":
             # Account downloads
-            account_source = DownloadSource(
-                VALUE_MAPPINGS[download_type]["table_name"], json_request["account_level"], download_type, agency_id
-            )
             filters = {**json_request["filters"], **json_request.get("account_filters", {})}
-            account_source.queryset = filter_function(
-                download_type,
-                VALUE_MAPPINGS[download_type]["table"],
-                filters,
-                json_request["account_level"],
-            )
-            download_sources.append(account_source)
+
+            if "is_fpds_join" in VALUE_MAPPINGS[download_type]:
+                # Contracts
+                d1_account_source = DownloadSource(
+                    VALUE_MAPPINGS[download_type]["table_name"],
+                    json_request["account_level"],
+                    download_type,
+                    agency_id,
+                    extra_file_type="Contracts_",
+                )
+                d1_filters = {**filters, f"{VALUE_MAPPINGS[download_type].get('is_fpds_join', '')}is_fpds": True}
+                d1_account_source.queryset = filter_function(
+                    download_type,
+                    VALUE_MAPPINGS[download_type]["table"],
+                    d1_filters,
+                    json_request["account_level"],
+                )
+                download_sources.append(d1_account_source)
+
+                # Assistance
+                d2_account_source = DownloadSource(
+                    VALUE_MAPPINGS[download_type]["table_name"],
+                    json_request["account_level"],
+                    download_type,
+                    agency_id,
+                    extra_file_type="Assistance_",
+                )
+                d2_filters = {**filters, f"{VALUE_MAPPINGS[download_type].get('is_fpds_join', '')}is_fpds": False}
+                d2_account_source.queryset = filter_function(
+                    download_type,
+                    VALUE_MAPPINGS[download_type]["table"],
+                    d2_filters,
+                    json_request["account_level"],
+                )
+                download_sources.append(d2_account_source)
+
+                # Unlinked
+                unlinked_account_source = DownloadSource(
+                    VALUE_MAPPINGS[download_type]["table_name"],
+                    json_request["account_level"],
+                    download_type,
+                    agency_id,
+                    extra_file_type="Unlinked_",
+                )
+                unlinked_filters = {**filters, "unlinked": True}
+                unlinked_account_source.queryset = filter_function(
+                    download_type,
+                    VALUE_MAPPINGS[download_type]["table"],
+                    unlinked_filters,
+                    json_request["account_level"],
+                )
+                download_sources.append(unlinked_account_source)
+
+            else:
+                account_source = DownloadSource(
+                    VALUE_MAPPINGS[download_type]["table_name"], json_request["account_level"], download_type, agency_id
+                )
+                account_source.queryset = filter_function(
+                    download_type,
+                    VALUE_MAPPINGS[download_type]["table"],
+                    filters,
+                    json_request["account_level"],
+                )
+                download_sources.append(account_source)
 
         elif VALUE_MAPPINGS[download_type]["source_type"] == "disaster":
             # Disaster Page downloads
@@ -299,6 +358,7 @@ def build_data_file_name(source, download_job, piid, assistance_id):
             "level": d_map[source.file_type],
             "timestamp": timestamp,
             "type": d_map[source.file_type],
+            "extra_file_type": source.extra_file_type,
         }
 
     return file_name_pattern.format(**file_name_values)

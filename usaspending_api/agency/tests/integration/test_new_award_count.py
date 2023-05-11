@@ -1,5 +1,5 @@
 import pytest
-from model_mommy import mommy
+from model_bakery import baker
 
 from rest_framework import status
 from usaspending_api.common.helpers.fiscal_year_helpers import current_fiscal_year
@@ -11,7 +11,7 @@ url = "/api/v2/agency/{code}/awards/new/count/{filter}"
 @pytest.fixture
 def new_award_data(db):
     dabs_submission_window_lazy_ref = "submissions.DABSSubmissionWindowSchedule"
-    dabs = mommy.make(
+    dabs = baker.make(
         dabs_submission_window_lazy_ref,
         submission_reveal_date="2021-08-09",
         submission_fiscal_year=2021,
@@ -23,7 +23,7 @@ def new_award_data(db):
     )
 
     submission_attributes_lazy_ref = "submissions.SubmissionAttributes"
-    mommy.make(
+    baker.make(
         submission_attributes_lazy_ref,
         reporting_fiscal_year=2021,
         reporting_fiscal_period=11,
@@ -32,84 +32,102 @@ def new_award_data(db):
     )
 
     toptier_agency_lazy_ref = "references.ToptierAgency"
-    ta1 = mommy.make(toptier_agency_lazy_ref, toptier_agency_id=1, toptier_code=123)
-    ta2 = mommy.make(toptier_agency_lazy_ref, toptier_agency_id=2, toptier_code=456)
-    ta3 = mommy.make(toptier_agency_lazy_ref, toptier_agency_id=3, toptier_code=789)
+    ta1 = baker.make(toptier_agency_lazy_ref, toptier_agency_id=1, toptier_code=123)
+    ta2 = baker.make(toptier_agency_lazy_ref, toptier_agency_id=2, toptier_code=456)
+    ta3 = baker.make(toptier_agency_lazy_ref, toptier_agency_id=3, toptier_code=789)
 
     agency_lazy_ref = "references.Agency"
-    ag1 = mommy.make(agency_lazy_ref, id=1, toptier_agency=ta1)
-    ag2 = mommy.make(agency_lazy_ref, id=2, toptier_agency=ta2)
-    ag3 = mommy.make(agency_lazy_ref, id=3, toptier_agency=ta3)
+    ag1 = baker.make(agency_lazy_ref, id=1, toptier_agency=ta1)
+    ag2 = baker.make(agency_lazy_ref, id=2, toptier_agency=ta2)
+    ag3 = baker.make(agency_lazy_ref, id=3, toptier_agency=ta3)
 
-    awards_lazy_ref = "awards.Award"
-    award1 = mommy.make(
+    awards_lazy_ref = "search.AwardSearch"
+    award1 = baker.make(
         awards_lazy_ref,
-        id=1,
+        award_id=1,
         type="A",
         date_signed="2019-10-15",
+        action_date="2019-10-15",
         earliest_transaction_id=10,
         latest_transaction_id=10,
-        awarding_agency=ag1,
-        funding_agency=ag2,
+        awarding_agency_id=ag1.id,
+        awarding_toptier_agency_code=ta1.toptier_code,
+        funding_agency_id=ag2.id,
+        funding_toptier_agency_code=ta2.toptier_code,
     )
-    award2 = mommy.make(
+    award2 = baker.make(
         awards_lazy_ref,
-        id=2,
+        award_id=2,
         type="B",
         date_signed="2019-12-15",
+        action_date="2019-12-15",
         earliest_transaction_id=20,
         latest_transaction_id=20,
-        awarding_agency=ag1,
-        funding_agency=ag2,
+        awarding_agency_id=ag1.id,
+        awarding_toptier_agency_code=ta1.toptier_code,
+        funding_agency_id=ag2.id,
+        funding_toptier_agency_code=ta2.toptier_code,
     )
-    award3 = mommy.make(
+    award3 = baker.make(
         awards_lazy_ref,
-        id=3,
+        award_id=3,
         type="07",
         date_signed="2020-01-30",
+        action_date="2020-01-30",
         earliest_transaction_id=30,
         latest_transaction_id=30,
-        awarding_agency=ag1,
-        funding_agency=ag2,
+        awarding_agency_id=ag1.id,
+        awarding_toptier_agency_code=ta1.toptier_code,
+        funding_agency_id=ag2.id,
+        funding_toptier_agency_code=ta2.toptier_code,
     )
-    award4 = mommy.make(
+    award4 = baker.make(
         awards_lazy_ref,
-        id=4,
+        award_id=4,
         type="B",
         date_signed="2019-09-30",
+        action_date="2019-09-30",
         earliest_transaction_id=40,
         latest_transaction_id=40,
-        awarding_agency=ag1,
-        funding_agency=ag2,
+        awarding_agency_id=ag1.id,
+        awarding_toptier_agency_code=ta1.toptier_code,
+        funding_agency_id=ag2.id,
+        funding_toptier_agency_code=ta2.toptier_code,
     )
-    award5 = mommy.make(
+    award5 = baker.make(
         awards_lazy_ref,
-        id=5,
+        award_id=5,
         type="08",
         date_signed="2020-12-15",
+        action_date="2020-12-15",
         earliest_transaction_id=50,
         latest_transaction_id=50,
-        awarding_agency=ag1,
-        funding_agency=ag2,
+        awarding_agency_id=ag1.id,
+        awarding_toptier_agency_code=ta1.toptier_code,
+        funding_agency_id=ag2.id,
+        funding_toptier_agency_code=ta2.toptier_code,
     )
-    award6 = mommy.make(
+    award6 = baker.make(
         awards_lazy_ref,
-        id=6,
+        award_id=6,
         type="08",
         date_signed="2021-07-05",
+        action_date="2021-07-05",
         earliest_transaction_id=60,
         latest_transaction_id=60,
-        awarding_agency=ag3,
-        funding_agency=ag2,
+        awarding_agency_id=ag3.id,
+        awarding_toptier_agency_code=ta3.toptier_code,
+        funding_agency_id=ag2.id,
+        funding_toptier_agency_code=ta2.toptier_code,
     )
 
-    transaction_normalized_lazy_ref = "awards.TransactionNormalized"
-    mommy.make(transaction_normalized_lazy_ref, id=10, award=award1, action_date="2019-10-15")
-    mommy.make(transaction_normalized_lazy_ref, id=20, award=award2, action_date="2020-12-15")
-    mommy.make(transaction_normalized_lazy_ref, id=30, award=award3, action_date="2020-01-30")
-    mommy.make(transaction_normalized_lazy_ref, id=40, award=award4, action_date="2019-09-30")
-    mommy.make(transaction_normalized_lazy_ref, id=50, award=award5, action_date="2020-12-15")
-    mommy.make(transaction_normalized_lazy_ref, id=60, award=award6, action_date="2021-07-05")
+    transaction_search_lazy_ref = "search.TransactionSearch"
+    baker.make(transaction_search_lazy_ref, transaction_id=10, award=award1, action_date="2019-10-15")
+    baker.make(transaction_search_lazy_ref, transaction_id=20, award=award2, action_date="2020-12-15")
+    baker.make(transaction_search_lazy_ref, transaction_id=30, award=award3, action_date="2020-01-30")
+    baker.make(transaction_search_lazy_ref, transaction_id=40, award=award4, action_date="2019-09-30")
+    baker.make(transaction_search_lazy_ref, transaction_id=50, award=award5, action_date="2020-12-15")
+    baker.make(transaction_search_lazy_ref, transaction_id=60, award=award6, action_date="2021-07-05")
 
 
 @pytest.mark.django_db

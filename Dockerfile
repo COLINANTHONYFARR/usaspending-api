@@ -1,14 +1,10 @@
-# Basic Dockerfile for the USASpendingAPI
+# Dockerfile for the USAspending Backend API
+# When built with docker-compose --profile usaspending build,
+# it will be built and tagged with the name in the image: key of the docker-compose services that use this default Dockerfile
 
-## Add your DATABASE_URL on the ENV line below. Use host.docker.internal instead of localhost (overidden with Docker compose)
+# Since requirements are copied into the image at build-time, this MUST be rebuilt if Python requirements change
 
-## Optional) Run ad-hoc commands:
-#        docker build . -t usaspendingapi
-#        docker run -p 127.0.0.1:8000:8000 usaspendingapi <command>
-
-# Rebuild and run when code in /usaspending-api changes
-
-# See README.md for docker-compose information
+# See docker-compose.yml file and README.md for docker-compose information
 
 FROM centos:7
 
@@ -16,12 +12,12 @@ WORKDIR /dockermount
 
 RUN yum -y update && yum clean all
 # sqlite-devel added as prerequisite for coverage python lib, used by pytest-cov plugin
-RUN yum -y install wget gcc openssl-devel bzip2-devel libffi libffi-devel zlib-devel sqlite-devel
+RUN yum -y install wget gcc openssl-devel bzip2-devel libffi libffi-devel zlib-devel sqlite-devel xz-devel
 RUN yum -y groupinstall "Development Tools"
 
-##### Install PostgreSQL 10 client (psql)
+##### Install PostgreSQL 13 client (psql)
 RUN yum -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-RUN yum -y install postgresql10
+RUN yum -y install postgresql13
 
 ##### Building python 3.7
 WORKDIR /usr/src

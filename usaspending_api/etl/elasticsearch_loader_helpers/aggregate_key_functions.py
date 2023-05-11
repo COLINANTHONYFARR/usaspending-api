@@ -1,63 +1,29 @@
 import json
 import logging
 
-from typing import Optional, List
+from typing import Optional
 
+from usaspending_api.recipient.models import RecipientProfile
 
 logger = logging.getLogger("script")
 
 
 def award_recipient_agg_key(record: dict) -> str:
     """Dictionary key order impacts Elasticsearch behavior!!!"""
-    if record["recipient_hash"] is None or record["recipient_levels"] is None:
-        return json.dumps(
-            {
-                "name": record["recipient_name"],
-                "duns": record["recipient_unique_id"],
-                "uei": record["recipient_uei"],
-                "hash": "",
-                "levels": "",
-            }
-        )
-    return json.dumps(
-        {
-            "name": record["recipient_name"],
-            "duns": record["recipient_unique_id"],
-            "uei": record["recipient_uei"],
-            "hash": str(record["recipient_hash"]),
-            "levels": record["recipient_levels"],
-        }
-    )
+    if record["recipient_hash"] is None:
+        return ""
+    return str(record["recipient_hash"]) + "/" + str(record["recipient_levels"])
 
 
 def transaction_recipient_agg_key(record: dict) -> str:
     """Dictionary key order impacts Elasticsearch behavior!!!"""
-    if record["recipient_hash"] is None or record["recipient_levels"] is None:
-        return json.dumps(
-            {
-                "name": record["recipient_name"],
-                "duns": record["recipient_unique_id"],
-                "uei": record["recipient_uei"],
-                "hash_with_level": "",
-            }
-        )
-    return json.dumps(
-        {
-            "name": record["recipient_name"],
-            "duns": record["recipient_unique_id"],
-            "uei": record["recipient_uei"],
-            "hash_with_level": f"{record['recipient_hash']}-{return_one_level(record['recipient_levels'])}",
-        }
+    if record["recipient_hash"] is None:
+        return ""
+    return (
+        str(record["recipient_hash"])
+        + "/"
+        + (RecipientProfile.return_one_level(record["recipient_levels"] or []) or "")
     )
-
-
-def return_one_level(levels: List[str]) -> Optional[str]:
-    """Return the most-desirable recipient level"""
-    for level in ("C", "R", "P"):  # Child, "Recipient," or Parent
-        if level in levels:
-            return level
-    else:
-        return None
 
 
 def awarding_subtier_agency_agg_key(record: dict) -> Optional[str]:
@@ -117,39 +83,31 @@ def _county_agg_key(location_type, record: dict) -> Optional[str]:
     """Dictionary key order impacts Elasticsearch behavior!!!"""
     if record[f"{location_type}_state_code"] is None or record[f"{location_type}_county_code"] is None:
         return None
-    return json.dumps(
-        {
-            "country_code": record[f"{location_type}_country_code"],
-            "state_code": record[f"{location_type}_state_code"],
-            "state_fips": record[f"{location_type}_state_fips"],
-            "county_code": record[f"{location_type}_county_code"],
-            "county_name": record[f"{location_type}_county_name"],
-            "population": record[f"{location_type}_county_population"],
-        }
-    )
+    return f"{record[f'{location_type}_state_code']}{record[f'{location_type}_county_code']}"
 
 
 def pop_congressional_agg_key(record: dict) -> Optional[str]:
-    return _congressional_agg_key("pop", record)
+    return _congressional_agg_key("pop", False, record)
+
+
+def pop_congressional_cur_agg_key(record: dict) -> Optional[str]:
+    return _congressional_agg_key("pop", True, record)
 
 
 def recipient_location_congressional_agg_key(record: dict) -> Optional[str]:
-    return _congressional_agg_key("recipient_location", record)
+    return _congressional_agg_key("recipient_location", False, record)
 
 
-def _congressional_agg_key(location_type, record: dict) -> Optional[str]:
+def recipient_location_congressional_cur_agg_key(record: dict) -> Optional[str]:
+    return _congressional_agg_key("recipient_location", True, record)
+
+
+def _congressional_agg_key(location_type, current, record: dict) -> Optional[str]:
     """Dictionary key order impacts Elasticsearch behavior!!!"""
-    if record[f"{location_type}_state_code"] is None or record[f"{location_type}_congressional_code"] is None:
+    cur_str = "_current" if current else ""
+    if record[f"{location_type}_state_code"] is None or record[f"{location_type}_congressional_code{cur_str}"] is None:
         return None
-    return json.dumps(
-        {
-            "country_code": record[f"{location_type}_country_code"],
-            "state_code": record[f"{location_type}_state_code"],
-            "state_fips": record[f"{location_type}_state_fips"],
-            "congressional_code": record[f"{location_type}_congressional_code"],
-            "population": record[f"{location_type}_congressional_population"],
-        }
-    )
+    return f"{record[f'{location_type}_state_code']}{record[f'{location_type}_congressional_code{cur_str}']}"
 
 
 def pop_state_agg_key(record: dict) -> Optional[str]:

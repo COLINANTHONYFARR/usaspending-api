@@ -10,7 +10,7 @@ from django.conf import settings
 
 # Third-party app imports
 from fiscalyear import FiscalDate
-from model_mommy import mommy
+from model_bakery import baker
 
 # Imports from your apps
 from usaspending_api.awards.models import FinancialAccountsByAwards
@@ -21,13 +21,23 @@ from usaspending_api.search.tests.data.utilities import setup_elasticsearch_test
 @pytest.fixture
 def mock_tas_data(db):
 
-    a1 = mommy.make("references.ToptierAgency", toptier_agency_id=99, name="Department of Pizza", abbreviation="DOP")
-    a2 = mommy.make(
-        "references.SubtierAgency", subtier_agency_id=22, name="Department of Sub-Pizza", abbreviation="DOSP"
+    a1 = baker.make(
+        "references.ToptierAgency",
+        toptier_agency_id=99,
+        name="Department of Pizza",
+        toptier_code="DOP",
+        abbreviation="DOP",
     )
-    mommy.make("references.Agency", id=1, toptier_agency=a1, subtier_agency=a2)
-    mommy.make(FederalAccount, id=1, parent_toptier_agency_id=99, agency_identifier="99", main_account_code="0001")
-    mommy.make(
+    a2 = baker.make(
+        "references.SubtierAgency",
+        subtier_agency_id=22,
+        name="Department of Sub-Pizza",
+        abbreviation="DOSP",
+        subtier_code="DOSP",
+    )
+    baker.make("references.Agency", id=1, toptier_agency=a1, subtier_agency=a2)
+    baker.make(FederalAccount, id=1, parent_toptier_agency_id=99, agency_identifier="99", main_account_code="0001")
+    baker.make(
         TreasuryAppropriationAccount,
         treasury_account_identifier=1,
         allocation_transfer_agency_id="028",
@@ -40,7 +50,7 @@ def mock_tas_data(db):
         ending_period_of_availability="2013",
         tas_rendering_label="028-028-2011/2013-X-8006-000",
     )
-    mommy.make(
+    baker.make(
         TreasuryAppropriationAccount,
         treasury_account_identifier=2,
         allocation_transfer_agency_id="004",
@@ -53,7 +63,7 @@ def mock_tas_data(db):
         ending_period_of_availability="2013",
         tas_rendering_label="004-028-2012/2013-8006-005",
     )
-    mommy.make(
+    baker.make(
         TreasuryAppropriationAccount,
         treasury_account_identifier=3,
         allocation_transfer_agency_id="001",
@@ -67,64 +77,100 @@ def mock_tas_data(db):
         tas_rendering_label="001-011-2001/2002-X-8007-001",
     )
 
-    mommy.make(FinancialAccountsByAwards, treasury_account_id=1, award_id=1)
-    mommy.make(FinancialAccountsByAwards, treasury_account_id=2, award_id=2)
-    mommy.make(FinancialAccountsByAwards, treasury_account_id=3, award_id=3)
+    baker.make(FinancialAccountsByAwards, treasury_account_id=1, award_id=1)
+    baker.make(FinancialAccountsByAwards, treasury_account_id=2, award_id=2)
+    baker.make(FinancialAccountsByAwards, treasury_account_id=3, award_id=3)
 
-    mommy.make(
-        "awards.TransactionNormalized",
-        id=1,
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=1,
         action_date="2010-10-01",
         award_id=1,
         is_fpds=True,
         type="A",
         awarding_agency_id=1,
-    )
-    mommy.make(
-        "awards.TransactionFPDS",
-        transaction_id=1,
-        legal_entity_city_name="BURBANK",
-        legal_entity_country_code="USA",
-        legal_entity_state_code="CA",
+        awarding_agency_code="DOP",
+        awarding_toptier_agency_name="Department of Pizza",
+        awarding_sub_tier_agency_c="DOSP",
+        awarding_subtier_agency_name="Department of Sub-Pizza",
+        recipient_location_city_name="BURBANK",
+        recipient_location_country_code="USA",
+        recipient_location_state_code="CA",
         piid="piiiiid",
-        place_of_perform_city_name="AUSTIN",
-        place_of_performance_state="TX",
-        place_of_perform_country_c="USA",
+        pop_country_code="USA",
+        pop_country_name="UNITED STATES",
+        pop_city_name="AUSTIN",
+        pop_state_code="TX",
+        tas_components=["aid=028main=8006ata=028sub=000bpoa=2011epoa=2013a=X"],
     )
 
-    mommy.make("awards.Award", id=1, is_fpds=True, latest_transaction_id=1, piid="piid", type="A", awarding_agency_id=1)
-    mommy.make("awards.Award", id=2, is_fpds=True, latest_transaction_id=1, piid="piid2", type="B")
-    mommy.make("awards.Award", id=3, is_fpds=True, latest_transaction_id=1, piid="piid3", type="C")
-
-    mommy.make(
-        "awards.Subaward",
-        id=1,
+    baker.make(
+        "search.AwardSearch",
         award_id=1,
-        amount=123.45,
-        prime_award_type="A",
-        award_type="procurement",
-        subaward_number="1A",
+        is_fpds=True,
+        latest_transaction_id=1,
+        piid="piid",
+        type="A",
+        awarding_agency_id=1,
+        tas_components="{aid=028main=8006ata=028sub=000bpoa=2011epoa=2013a=X}",
+        action_date="2020-01-01",
+        subaward_count=1,
     )
-    mommy.make(
-        "awards.Subaward",
-        id=2,
+    baker.make(
+        "search.AwardSearch",
         award_id=2,
-        amount=5000.00,
-        prime_award_type="A",
-        award_type="procurement",
-        subaward_number="2A",
+        is_fpds=True,
+        latest_transaction_id=1,
+        piid="piid2",
+        type="B",
+        tas_components="{aid=028main=8006ata=004sub=005bpoa=2012epoa=2013a=X}",
+        action_date="2020-01-01",
+        subaward_count=1,
     )
-    mommy.make(
-        "awards.Subaward",
-        id=3,
+    baker.make(
+        "search.AwardSearch",
         award_id=3,
-        amount=0.00,
-        prime_award_type="A",
-        award_type="procurement",
-        subaward_number="3A",
+        is_fpds=True,
+        latest_transaction_id=1,
+        piid="piid3",
+        type="C",
+        tas_components="{aid=011main=8007ata=001sub=001bpoa=2001epoa=2002a=X}",
+        action_date="2020-01-01",
+        subaward_count=1,
     )
 
-    mommy.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
+    baker.make(
+        "search.SubawardSearch",
+        broker_subaward_id=1,
+        award_id=1,
+        subaward_amount=123.45,
+        prime_award_type="A",
+        prime_award_group="procurement",
+        subaward_number="1A",
+        treasury_account_identifiers=[1],
+    )
+    baker.make(
+        "search.SubawardSearch",
+        broker_subaward_id=2,
+        award_id=2,
+        subaward_amount=5000.00,
+        prime_award_type="A",
+        prime_award_group="procurement",
+        subaward_number="2A",
+        treasury_account_identifiers=[2],
+    )
+    baker.make(
+        "search.SubawardSearch",
+        broker_subaward_id=3,
+        award_id=3,
+        subaward_amount=0.00,
+        prime_award_type="A",
+        prime_award_group="procurement",
+        subaward_number="3A",
+        treasury_account_identifiers=[3],
+    )
+
+    baker.make("references.RefCountryCode", country_code="USA", country_name="UNITED STATES")
 
 
 def test_spending_by_award_tas_success(client, monkeypatch, elasticsearch_award_index, mock_tas_data):

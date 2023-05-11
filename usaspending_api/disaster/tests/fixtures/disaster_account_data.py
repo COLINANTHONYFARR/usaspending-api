@@ -1,26 +1,26 @@
 import pytest
-
-from model_mommy import mommy
+import datetime
+from model_bakery import baker
 
 
 @pytest.fixture
 def disaster_account_data():
-    ta1 = mommy.make("references.ToptierAgency", toptier_agency_id=7, toptier_code="007", name="Agency 007")
-    ta2 = mommy.make("references.ToptierAgency", toptier_agency_id=8, toptier_code="008", name="Agency 008")
-    ta3 = mommy.make("references.ToptierAgency", toptier_agency_id=9, toptier_code="009", name="Agency 009")
-    ta4 = mommy.make("references.ToptierAgency", toptier_agency_id=10, toptier_code="010", name="Agency 010")
+    ta1 = baker.make("references.ToptierAgency", toptier_agency_id=7, toptier_code="007", name="Agency 007")
+    ta2 = baker.make("references.ToptierAgency", toptier_agency_id=8, toptier_code="008", name="Agency 008")
+    ta3 = baker.make("references.ToptierAgency", toptier_agency_id=9, toptier_code="009", name="Agency 009")
+    ta4 = baker.make("references.ToptierAgency", toptier_agency_id=10, toptier_code="010", name="Agency 010")
 
-    sa1 = mommy.make("references.SubtierAgency", subtier_agency_id=1007, subtier_code="1007", name="Subtier 1007")
-    sa2 = mommy.make("references.SubtierAgency", subtier_agency_id=1008, subtier_code="1008", name="Subtier 1008")
-    sa3 = mommy.make("references.SubtierAgency", subtier_agency_id=2008, subtier_code="2008", name="Subtier 2008")
-    sa4 = mommy.make("references.SubtierAgency", subtier_agency_id=3008, subtier_code="3008", name="Subtier 3008")
+    sa1 = baker.make("references.SubtierAgency", subtier_agency_id=1007, subtier_code="1007", name="Subtier 1007")
+    sa2 = baker.make("references.SubtierAgency", subtier_agency_id=1008, subtier_code="1008", name="Subtier 1008")
+    sa3 = baker.make("references.SubtierAgency", subtier_agency_id=2008, subtier_code="2008", name="Subtier 2008")
+    sa4 = baker.make("references.SubtierAgency", subtier_agency_id=3008, subtier_code="3008", name="Subtier 3008")
 
-    ag1 = mommy.make("references.Agency", id=1, toptier_agency=ta1, subtier_agency=sa1, toptier_flag=True)
-    ag2 = mommy.make("references.Agency", id=2, toptier_agency=ta2, subtier_agency=sa2, toptier_flag=True)
-    ag3 = mommy.make("references.Agency", id=3, toptier_agency=ta2, subtier_agency=sa3, toptier_flag=False)
-    mommy.make("references.Agency", id=4, toptier_agency=ta3, subtier_agency=sa4, toptier_flag=True)
+    ag1 = baker.make("references.Agency", id=1, toptier_agency=ta1, subtier_agency=sa1, toptier_flag=True)
+    ag2 = baker.make("references.Agency", id=2, toptier_agency=ta2, subtier_agency=sa2, toptier_flag=True)
+    ag3 = baker.make("references.Agency", id=3, toptier_agency=ta2, subtier_agency=sa3, toptier_flag=False)
+    ag4 = baker.make("references.Agency", id=4, toptier_agency=ta3, subtier_agency=sa4, toptier_flag=True)
 
-    dsws1 = mommy.make(
+    dsws1 = baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         id=2019070,
         is_quarter=False,
@@ -31,7 +31,7 @@ def disaster_account_data():
         submission_fiscal_month=7,
         submission_reveal_date="2020-4-15",
     )
-    dsws2 = mommy.make(
+    dsws2 = baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         id=2022071,
         is_quarter=True,
@@ -40,9 +40,9 @@ def disaster_account_data():
         submission_fiscal_year=2022,
         submission_fiscal_quarter=3,
         submission_fiscal_month=8,
-        submission_reveal_date="2022-4-15",
+        submission_reveal_date=f"{datetime.datetime.now().year + 1}-12-31",
     )
-    dsws3 = mommy.make(
+    dsws3 = baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         id=2022080,
         is_quarter=False,
@@ -52,7 +52,7 @@ def disaster_account_data():
         submission_reveal_date="2020-5-15",
     )
     # Unclosed submission window
-    mommy.make(
+    baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         id=2021120,
         is_quarter=False,
@@ -63,7 +63,7 @@ def disaster_account_data():
         period_start_date="2021-09-01",
     )
     # Unclosed submisssion window
-    dsws4 = mommy.make(
+    dsws4 = baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         id=9999070,
         is_quarter=False,
@@ -74,7 +74,7 @@ def disaster_account_data():
         submission_fiscal_month=7,
         submission_reveal_date="9999-4-15",
     )
-    sub1 = mommy.make(
+    sub1 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=2022,
         reporting_fiscal_period=7,
@@ -84,7 +84,7 @@ def disaster_account_data():
         toptier_code="007",
         submission_window=dsws2,
     )
-    sub2 = mommy.make(
+    sub2 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=2022,
         reporting_fiscal_period=8,
@@ -94,7 +94,7 @@ def disaster_account_data():
         toptier_code="008",
         submission_window=dsws3,
     )
-    sub3 = mommy.make(
+    sub3 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=2022,
         reporting_fiscal_period=7,
@@ -104,7 +104,7 @@ def disaster_account_data():
         toptier_code="009",
         submission_window=dsws2,
     )
-    sub4 = mommy.make(
+    sub4 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=2022,
         reporting_fiscal_period=8,
@@ -113,7 +113,7 @@ def disaster_account_data():
         reporting_period_start="2022-05-01",
         submission_window=dsws3,
     )
-    sub5 = mommy.make(
+    sub5 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=2019,
         reporting_fiscal_period=7,
@@ -122,7 +122,7 @@ def disaster_account_data():
         reporting_period_start="2019-04-01",
         submission_window=dsws1,
     )
-    sub6 = mommy.make(
+    sub6 = baker.make(
         "submissions.SubmissionAttributes",
         reporting_fiscal_year=9999,
         reporting_fiscal_period=7,
@@ -132,20 +132,20 @@ def disaster_account_data():
         submission_window=dsws4,
     )
 
-    fa1 = mommy.make(
+    fa1 = baker.make(
         "accounts.FederalAccount", federal_account_code="001-0000", account_title="FA 1", parent_toptier_agency=ta1
     )
-    fa2 = mommy.make(
+    fa2 = baker.make(
         "accounts.FederalAccount", federal_account_code="002-0000", account_title="FA 2", parent_toptier_agency=ta2
     )
-    fa3 = mommy.make(
+    fa3 = baker.make(
         "accounts.FederalAccount", federal_account_code="003-0000", account_title="FA 3", parent_toptier_agency=ta3
     )
-    fa4 = mommy.make(
+    fa4 = baker.make(
         "accounts.FederalAccount", federal_account_code="004-0000", account_title="FA 4", parent_toptier_agency=ta4
     )
 
-    tas1 = mommy.make(
+    tas1 = baker.make(
         "accounts.TreasuryAppropriationAccount",
         funding_toptier_agency=ta1,
         budget_function_code=100,
@@ -156,7 +156,7 @@ def disaster_account_data():
         account_title="TA 1",
         tas_rendering_label="001-X-0000-000",
     )
-    tas2 = mommy.make(
+    tas2 = baker.make(
         "accounts.TreasuryAppropriationAccount",
         funding_toptier_agency=ta2,
         budget_function_code=200,
@@ -167,7 +167,7 @@ def disaster_account_data():
         account_title="TA 2",
         tas_rendering_label="002-X-0000-000",
     )
-    tas3 = mommy.make(
+    tas3 = baker.make(
         "accounts.TreasuryAppropriationAccount",
         funding_toptier_agency=ta3,
         budget_function_code=300,
@@ -178,7 +178,7 @@ def disaster_account_data():
         account_title="TA 3",
         tas_rendering_label="003-X-0000-000",
     )
-    tas4 = mommy.make(
+    tas4 = baker.make(
         "accounts.TreasuryAppropriationAccount",
         funding_toptier_agency=ta4,
         budget_function_code=400,
@@ -189,7 +189,7 @@ def disaster_account_data():
         account_title="TA 4",
         tas_rendering_label="001-X-0000-000",
     )
-    tas5 = mommy.make(
+    tas5 = baker.make(
         "accounts.TreasuryAppropriationAccount",
         funding_toptier_agency=ta1,
         budget_function_code=200,
@@ -200,7 +200,7 @@ def disaster_account_data():
         account_title="TA 5",
         tas_rendering_label="002-2008/2009-0000-000",
     )
-    tas6 = mommy.make(
+    tas6 = baker.make(
         "accounts.TreasuryAppropriationAccount",
         funding_toptier_agency=ta1,
         budget_function_code=300,
@@ -212,19 +212,19 @@ def disaster_account_data():
         tas_rendering_label="003-2017/2018-0000-000",
     )
 
-    mommy.make("accounts.AppropriationAccountBalances", treasury_account_identifier=tas1, submission=sub1)
-    mommy.make("accounts.AppropriationAccountBalances", treasury_account_identifier=tas2, submission=sub2)
-    mommy.make("accounts.AppropriationAccountBalances", treasury_account_identifier=tas3, submission=sub4)
-    mommy.make("accounts.AppropriationAccountBalances", treasury_account_identifier=tas4, submission=sub5)
+    baker.make("accounts.AppropriationAccountBalances", treasury_account_identifier=tas1, submission=sub1)
+    baker.make("accounts.AppropriationAccountBalances", treasury_account_identifier=tas2, submission=sub2)
+    baker.make("accounts.AppropriationAccountBalances", treasury_account_identifier=tas3, submission=sub4)
+    baker.make("accounts.AppropriationAccountBalances", treasury_account_identifier=tas4, submission=sub5)
 
-    pa1 = mommy.make("references.RefProgramActivity", program_activity_code="000", program_activity_name="NAME 1")
-    pa2 = mommy.make("references.RefProgramActivity", program_activity_code="1000", program_activity_name="NAME 2")
-    pa3 = mommy.make("references.RefProgramActivity", program_activity_code="4567", program_activity_name="NAME 3")
-    pa4 = mommy.make("references.RefProgramActivity", program_activity_code="111", program_activity_name="NAME 4")
-    pa5 = mommy.make("references.RefProgramActivity", program_activity_code="1234", program_activity_name="NAME 5")
+    pa1 = baker.make("references.RefProgramActivity", program_activity_code="000", program_activity_name="NAME 1")
+    pa2 = baker.make("references.RefProgramActivity", program_activity_code="1000", program_activity_name="NAME 2")
+    pa3 = baker.make("references.RefProgramActivity", program_activity_code="4567", program_activity_name="NAME 3")
+    pa4 = baker.make("references.RefProgramActivity", program_activity_code="111", program_activity_name="NAME 4")
+    pa5 = baker.make("references.RefProgramActivity", program_activity_code="1234", program_activity_name="NAME 5")
 
     oc = "references.ObjectClass"
-    oc1 = mommy.make(
+    oc1 = baker.make(
         oc,
         major_object_class=10,
         major_object_class_name="Name 10",
@@ -232,7 +232,7 @@ def disaster_account_data():
         object_class_name="equipment",
         direct_reimbursable="R",
     )
-    oc2 = mommy.make(
+    oc2 = baker.make(
         oc,
         major_object_class=20,
         major_object_class_name="Name 20",
@@ -240,7 +240,7 @@ def disaster_account_data():
         object_class_name="hvac",
         direct_reimbursable="R",
     )
-    oc3 = mommy.make(
+    oc3 = baker.make(
         oc,
         major_object_class=30,
         major_object_class_name="Name 30",
@@ -248,7 +248,7 @@ def disaster_account_data():
         object_class_name="supplies",
         direct_reimbursable="R",
     )
-    oc4 = mommy.make(
+    oc4 = baker.make(
         oc,
         major_object_class=40,
         major_object_class_name="Name 40",
@@ -256,7 +256,7 @@ def disaster_account_data():
         object_class_name="interest",
         direct_reimbursable="R",
     )
-    oc5 = mommy.make(
+    oc5 = baker.make(
         oc,
         major_object_class=40,
         major_object_class_name="Name 40",
@@ -264,7 +264,7 @@ def disaster_account_data():
         object_class_name="interest",
         direct_reimbursable="R",
     )
-    oc6 = mommy.make(
+    oc6 = baker.make(
         oc,
         major_object_class=30,
         major_object_class_name="Name 30",
@@ -274,27 +274,27 @@ def disaster_account_data():
     )
 
     defc = "references.DisasterEmergencyFundCode"
-    defc_l = mommy.make(
+    defc_l = baker.make(
         defc, code="L", public_law="PUBLIC LAW FOR CODE L", title="TITLE FOR CODE L", group_name="covid_19"
     )
-    defc_m = mommy.make(
+    defc_m = baker.make(
         defc, code="M", public_law="PUBLIC LAW FOR CODE M", title="TITLE FOR CODE M", group_name="covid_19"
     )
-    defc_n = mommy.make(
+    defc_n = baker.make(
         defc, code="N", public_law="PUBLIC LAW FOR CODE N", title="TITLE FOR CODE N", group_name="covid_19"
     )
-    defc_o = mommy.make(
+    defc_o = baker.make(
         defc, code="O", public_law="PUBLIC LAW FOR CODE O", title="TITLE FOR CODE O", group_name="covid_19"
     )
-    defc_p = mommy.make(
+    defc_p = baker.make(
         defc, code="P", public_law="PUBLIC LAW FOR CODE P", title="TITLE FOR CODE P", group_name="covid_19"
     )
-    mommy.make(defc, code="9", public_law="PUBLIC LAW FOR CODE 9", title="TITLE FOR CODE 9")
-    defc_q = mommy.make(
+    baker.make(defc, code="9", public_law="PUBLIC LAW FOR CODE 9", title="TITLE FOR CODE 9")
+    defc_q = baker.make(
         defc, code="Q", public_law="PUBLIC LAW FOR CODE Q", title="TITLE FOR CODE Q", group_name="covid_19"
     )
     fabpaoc = "financial_activities.FinancialAccountsByProgramActivityObjectClass"
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas1,
         submission=sub1,
@@ -307,7 +307,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=50000,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=100000,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas1,
         submission=sub1,
@@ -320,7 +320,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=5000,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=10000,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas1,
         submission=sub1,
@@ -333,7 +333,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=500,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=1000,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas2,
         submission=sub2,
@@ -346,7 +346,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=50,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=100,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas2,
         submission=sub3,
@@ -359,7 +359,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=5,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=10,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas3,
         submission=sub3,
@@ -372,7 +372,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0.5,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=1,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas3,
         submission=sub4,
@@ -385,7 +385,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0.5,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=1,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas3,
         submission=sub4,
@@ -398,7 +398,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0.05,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0.1,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas4,
         submission=sub5,
@@ -411,7 +411,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=-50,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=-50,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas5,
         submission=sub1,
@@ -422,7 +422,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=930000,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=1000,
     )
-    mommy.make(
+    baker.make(
         fabpaoc,
         treasury_account=tas6,
         submission=sub1,
@@ -434,39 +434,149 @@ def disaster_account_data():
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=25000,
     )
 
-    a1 = mommy.make(
-        "awards.Award", id=1, total_loan_value=333, type="07", funding_agency=ag1, latest_transaction_id=10
+    a1 = baker.make(
+        "search.AwardSearch",
+        award_id=1,
+        total_loan_value=333,
+        type="07",
+        funding_agency_id=ag1.id,
+        funding_toptier_agency_code="007",
+        funding_toptier_agency_name="Agency 007",
+        funding_subtier_agency_code="1007",
+        funding_subtier_agency_name="Subtier 1007",
+        latest_transaction_id=10,
+        action_date="2020-10-01",
+        disaster_emergency_fund_codes=["O"],
+        total_covid_obligation=2000,
+        total_covid_outlay=20000,
+        covid_spending_by_defc=[
+            {"defc": "O", "outlay": 20000, "obligation": 2000},
+        ],
     )  # Loan
-    a2 = mommy.make(
-        "awards.Award", id=2, total_loan_value=444, type="02", funding_agency=ag2, latest_transaction_id=20
+    a2 = baker.make(
+        "search.AwardSearch",
+        award_id=2,
+        total_loan_value=444,
+        type="02",
+        funding_agency_id=ag2.id,
+        funding_toptier_agency_code="008",
+        funding_toptier_agency_name="Agency 008",
+        funding_subtier_agency_code="1008",
+        funding_subtier_agency_name="Subtier 1008",
+        latest_transaction_id=20,
+        action_date="2020-10-01",
+        disaster_emergency_fund_codes=["O"],
+        total_covid_obligation=2000000,
+        total_covid_outlay=20,
+        covid_spending_by_defc=[
+            {"defc": "O", "outlay": 20, "obligation": 2000000},
+        ],
     )  # Block Grant - subtier sister to a4
-    a3 = mommy.make(
-        "awards.Award", id=3, total_loan_value=444, type="A", funding_agency=ag3, latest_transaction_id=30
+    a3 = baker.make(
+        "search.AwardSearch",
+        award_id=3,
+        total_loan_value=444,
+        type="A",
+        funding_agency_id=ag3.id,
+        funding_toptier_agency_code="008",
+        funding_toptier_agency_name="Agency 008",
+        funding_subtier_agency_code="2008",
+        funding_subtier_agency_name="Subtier 2008",
+        latest_transaction_id=30,
+        action_date="2020-10-01",
+        disaster_emergency_fund_codes=["M", "P", "N", "O", "Q"],
+        total_covid_obligation=20200222,
+        total_covid_outlay=2200204,
+        covid_spending_by_defc=[
+            {"defc": "Q", "outlay": 2, "obligation": 2},
+            {"defc": "M", "outlay": 2000000, "obligation": 20},
+            {"defc": "N", "outlay": 200, "obligation": 200000},
+            {"defc": "O", "outlay": 2, "obligation": 20000000},
+            {"defc": "P", "outlay": 200000, "obligation": 200},
+        ],
     )  # BPA Call
-    a4 = mommy.make(
-        "awards.Award", id=4, total_loan_value=555, type="02", funding_agency=ag3, latest_transaction_id=40
+    a4 = baker.make(
+        "search.AwardSearch",
+        award_id=4,
+        total_loan_value=555,
+        type="02",
+        funding_agency_id=ag3.id,
+        funding_toptier_agency_code="008",
+        funding_toptier_agency_name="Agency 008",
+        funding_subtier_agency_code="2008",
+        funding_subtier_agency_name="Subtier 2008",
+        latest_transaction_id=40,
+        action_date="2020-10-01",
+        disaster_emergency_fund_codes=["O"],
+        total_covid_obligation=200000000,
+        total_covid_outlay=-2,
+        covid_spending_by_defc=[
+            {"defc": "O", "outlay": 200000000, "obligation": -2},
+        ],
     )  # Block Grant - subtier sister to a2
+    a5 = baker.make(
+        "search.AwardSearch",
+        award_id=5,
+        total_loan_value=666,
+        type="02",
+        funding_agency_id=ag4.id,
+        funding_toptier_agency_code="009",
+        funding_toptier_agency_name="Agency 009",
+        funding_subtier_agency_code="3008",
+        funding_subtier_agency_name="Subtier 3008",
+        latest_transaction_id=50,
+        action_date="2020-10-01",
+        disaster_emergency_fund_codes=["O"],
+        total_covid_obligation=1000,
+        total_covid_outlay=1000,
+        covid_spending_by_defc=[
+            {"defc": "O", "outlay": 1000, "obligation": 1000},
+        ],
+    )
 
-    mommy.make(
-        "awards.TransactionNormalized", id=10, award=a1, action_date="2020-04-01", is_fpds=False, funding_agency=ag1
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=10,
+        award=a1,
+        action_date="2020-04-01",
+        is_fpds=False,
+        funding_agency_id=ag1.id,
     )
-    mommy.make(
-        "awards.TransactionNormalized", id=20, award=a2, action_date="2020-04-02", is_fpds=False, funding_agency=ag2
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=20,
+        award=a2,
+        action_date="2020-04-02",
+        is_fpds=False,
+        funding_agency_id=ag2.id,
     )
-    mommy.make(
-        "awards.TransactionNormalized", id=30, award=a3, action_date="2020-04-03", is_fpds=True, funding_agency=ag3
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=30,
+        award=a3,
+        action_date="2020-04-03",
+        is_fpds=True,
+        funding_agency_id=ag3.id,
     )
-    mommy.make(
-        "awards.TransactionNormalized", id=40, award=a4, action_date="2020-04-04", is_fpds=False, funding_agency=ag3
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=40,
+        award=a4,
+        action_date="2020-04-04",
+        is_fpds=False,
+        funding_agency_id=ag3.id,
     )
-
-    mommy.make("awards.TransactionFABS", transaction_id=10)
-    mommy.make("awards.TransactionFABS", transaction_id=20)
-    mommy.make("awards.TransactionFPDS", transaction_id=30)
-    mommy.make("awards.TransactionFABS", transaction_id=40)
+    baker.make(
+        "search.TransactionSearch",
+        transaction_id=50,
+        award=a5,
+        action_date="2020-04-04",
+        is_fpds=False,
+        funding_agency_id=ag4.id,
+    )
 
     faba = "awards.FinancialAccountsByAwards"
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas1,
         submission=sub1,
@@ -477,7 +587,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas1,
         submission=sub1,
@@ -489,7 +599,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas1,
         submission=sub1,
@@ -501,7 +611,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas2,
         submission=sub2,
@@ -513,7 +623,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas2,
         submission=sub2,
@@ -525,7 +635,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas2,
         submission=sub3,
@@ -537,7 +647,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas3,
         submission=sub3,
@@ -549,7 +659,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas3,
         submission=sub4,
@@ -561,7 +671,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas3,
         submission=sub4,
@@ -573,7 +683,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas3,
         submission=sub4,
@@ -585,7 +695,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas4,
         submission=sub5,
@@ -597,7 +707,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas5,
         submission=sub1,
@@ -609,7 +719,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas6,
         submission=sub1,
@@ -621,7 +731,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas3,
         submission=sub4,
@@ -633,7 +743,7 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
-    mommy.make(
+    baker.make(
         faba,
         treasury_account=tas1,
         submission=sub6,
@@ -645,8 +755,20 @@ def disaster_account_data():
         ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
         ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
     )
+    baker.make(
+        faba,
+        treasury_account=tas4,
+        submission=sub4,
+        disaster_emergency_fund=defc_l,
+        transaction_obligated_amount=1000,
+        gross_outlay_amount_by_award_cpe=1000,
+        award=a5,
+        distinct_award_key=5,
+        ussgl487200_down_adj_pri_ppaid_undel_orders_oblig_refund_cpe=0,
+        ussgl497200_down_adj_pri_paid_deliv_orders_oblig_refund_cpe=0,
+    )
 
-    mommy.make(
+    baker.make(
         "references.GTASSF133Balances",
         disaster_emergency_fund=defc_m,
         tas_rendering_label="003-X-0000-000",
@@ -659,7 +781,7 @@ def disaster_account_data():
         fiscal_period=12,
         fiscal_year=2021,
     )
-    mommy.make(
+    baker.make(
         "references.GTASSF133Balances",
         disaster_emergency_fund=defc_n,
         tas_rendering_label="002-X-0000-000",

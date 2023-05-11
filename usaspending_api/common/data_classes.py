@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
+from typing_extensions import Literal
 
 
 @dataclass
@@ -25,3 +26,13 @@ class Pagination:
     @property
     def robust_order_by_fields(self):
         return (self.order_by, f"{self._sort_order_field_prefix}{self.secondary_sort_key}")
+
+
+@dataclass
+class TransactionColumn:
+    dest_name: str
+    source: Optional[str]
+    delta_type: str
+    handling: Literal[
+        "cast", "leave_null", "literal", "normal", "parse_string_datetime_to_date", "string_datetime_remove_timestamp"
+    ] = "normal"

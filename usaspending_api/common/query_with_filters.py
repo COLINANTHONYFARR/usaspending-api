@@ -104,15 +104,22 @@ class _TimePeriods(_Filter):
     @classmethod
     def generate_elasticsearch_query(cls, filter_values: List[dict], query_type: _QueryType, **options) -> ES_Q:
         time_period_query = []
-        gte_field = options.get("gte_field", "action_date")
-        lte_field = options.get("lte_field", "date_signed" if query_type == _QueryType.AWARDS else "action_date")
+        if options:
+            gte_field = options.get("gte_field", "action_date")
+            lte_field = options.get("lte_field", "date_signed" if query_type == _QueryType.AWARDS else "action_date")
 
         for v in filter_values:
             start_date = v.get("start_date") or settings.API_SEARCH_MIN_DATE
             end_date = v.get("end_date") or settings.API_MAX_DATE
 
-            gte_range = {gte_field: {"gte": start_date}}
-            lte_range = {lte_field: {"lte": end_date}}
+            gte_range = {gte_field if options else v.get("gte_date_type", "action_date"): {"gte": start_date}}
+            lte_range = {
+                lte_field
+                if options
+                else v.get("lte_date_type", "date_signed" if query_type == _QueryType.AWARDS else "action_date"): {
+                    "lte": end_date
+                }
+            }
 
             time_period_query.append(
                 ES_Q("bool", should=[ES_Q("range", **gte_range), ES_Q("range", **lte_range)], minimum_should_match=2)
@@ -207,7 +214,6 @@ class _RecipientSearchText(_Filter):
             if len(upper_recipient_string) == 9 and upper_recipient_string[:5].isnumeric():
                 recipient_duns_query = ES_Q("match", recipient_unique_id=upper_recipient_string)
                 recipient_search_query.append(ES_Q("dis_max", queries=[recipient_name_query, recipient_duns_query]))
-
             if len(upper_recipient_string) == 12:
                 recipient_uei_query = ES_Q("match", recipient_uei=upper_recipient_string)
                 recipient_search_query.append(ES_Q("dis_max", queries=[recipient_name_query, recipient_uei_query]))
@@ -227,13 +233,9 @@ class _RecipientId(_Filter):
         if filter_value.endswith("P"):
             return ES_Q("match", parent_recipient_hash=recipient_hash)
         elif filter_value.endswith("C"):
-            return ES_Q("match", recipient_hash=recipient_hash) & ~ES_Q(
-                "match", parent_recipient_unique_id__keyword="NULL"
-            )
+            return ES_Q("match", recipient_hash=recipient_hash) & ~ES_Q("match", parent_uei__keyword="NULL")
         else:
-            return ES_Q("match", recipient_hash=recipient_hash) & ES_Q(
-                "match", parent_recipient_unique_id__keyword="NULL"
-            )
+            return ES_Q("match", recipient_hash=recipient_hash) & ~ES_Q("exists", field="parent_uei")
 
 
 class _RecipientScope(_Filter):
@@ -373,7 +375,7 @@ class _ProgramNumbers(_Filter):
         for v in filter_values:
             if query_type == _QueryType.AWARDS:
                 escaped_program_number = v.replace(".", "\\.")
-                r = f""".*\\"cfda_number\\": \\"{escaped_program_number}\\".*"""
+                r = f""".*\\"cfda_number\\" *: *\\"{escaped_program_number}\\".*"""
                 programs_numbers_query.append(ES_Q("regexp", cfdas=r))
             else:
                 programs_numbers_query.append(ES_Q("match", cfda_number=v))

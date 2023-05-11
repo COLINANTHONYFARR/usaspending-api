@@ -1,11 +1,10 @@
 """
-For more information on this file: https://docs.djangoproject.com/en/2.2/topics/settings/
-For the full list of settings and their values: https://docs.djangoproject.com/en/2.2/ref/settings/
+For more information on this file: https://docs.djangoproject.com/en/3.2/topics/settings/
+For the full list of settings and their values: https://docs.djangoproject.com/en/3.2/ref/settings/
 """
-
+import ddtrace
 import dj_database_url
 import os
-import ddtrace
 
 from django.db import DEFAULT_DB_ALIAS
 from django.utils.crypto import get_random_string
@@ -26,6 +25,11 @@ DEFAULT_DB_TIMEOUT_IN_SECONDS = int(os.environ.get("DEFAULT_DB_TIMEOUT_IN_SECOND
 DOWNLOAD_DB_TIMEOUT_IN_HOURS = 4
 CONNECTION_MAX_SECONDS = 10
 
+# Default type for when a Primary Key is not specified
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+# Default text search config setting when dealing with tsvectors
+DEFAULT_TEXT_SEARCH_CONFIG = "pg_catalog.simple"
+
 # Value is set per environment using formula: ( TOTAL_MEMORY * 0.25 ) / MAX_CONNECTIONS;
 # MAX_CONNECTIONS in this case refers to those serving downloads
 DOWNLOAD_DB_WORK_MEM_IN_MB = os.environ.get("DOWNLOAD_DB_WORK_MEM_IN_MB", 128)
@@ -35,10 +39,10 @@ API_MIN_DATE = "2000-10-01"  # Beginning of FY2001
 API_SEARCH_MIN_DATE = "2007-10-01"  # Beginning of FY2008
 
 # Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
+# See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = get_random_string()
+SECRET_KEY = get_random_string(length=12)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Defaults to False, unless DJANGO_DEBUG env var is set to a truthy value
@@ -145,20 +149,24 @@ ES_ROUTING_FIELD = "recipient_agg_key"
 # Grants API
 GRANTS_API_KEY = os.environ.get("GRANTS_API_KEY")
 
-# Applications https://docs.djangoproject.com/en/2.2/ref/settings/#installed-apps
+# Applications https://docs.djangoproject.com/en/3.2/ref/settings/#installed-apps
 INSTALLED_APPS = [
+    # Built-in
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "django.contrib.staticfiles",
     "django.contrib.postgres",
+    "django.contrib.staticfiles",
+    # Third-party
+    "corsheaders",
     "debug_toolbar",
     "django_extensions",
+    "django_spaghetti",
     "rest_framework",
-    "corsheaders",
     "rest_framework_tracking",
+    # Project applications
     "usaspending_api.accounts",
     "usaspending_api.agency",
     "usaspending_api.api_docs",
@@ -177,8 +185,6 @@ INSTALLED_APPS = [
     "usaspending_api.search",
     "usaspending_api.submissions",
     "usaspending_api.transactions",
-    "django_spaghetti",
-    "simple_history",
 ]
 
 INTERNAL_IPS = ()
@@ -229,7 +235,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "simple_history.middleware.HistoryRequestMiddleware",
     "usaspending_api.common.logging.LoggingMiddleware",
 ]
 
@@ -257,7 +262,7 @@ WSGI_APPLICATION = "usaspending_api.wsgi.application"
 CORS_ORIGIN_ALLOW_ALL = True  # Temporary while in development
 
 # Database
-# https://docs.djangoproject.com/en/2.2/ref/settings/#databases
+# https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 # import an environment variable, DATABASE_URL
 # see https://github.com/kennethreitz/dj-database-url for more info
@@ -317,7 +322,7 @@ if os.environ.get("DATA_BROKER_DATABASE_URL"):
 DATA_BROKER_DBLINK_NAME = "broker_server"
 
 # Password validation
-# https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
+# https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -342,7 +347,7 @@ REST_FRAMEWORK = {
 }
 
 # Internationalization
-# https://docs.djangoproject.com/en/2.2/topics/i18n/
+# https://docs.djangoproject.com/en/3.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -351,11 +356,17 @@ USE_L10N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
+# https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = "/static/"
 STATIC_ROOT = str(APP_DIR / "static/") + "/"
 STATICFILES_DIRS = (str(APP_DIR / "static_doc_files") + "/",)
+
+# Setup dir for console.log if it doesn't exist
+logs_dir = APP_DIR / "logs"
+console_log_file_path = logs_dir / "console.log"
+logs_dir.mkdir(parents=True, exist_ok=True)
+console_log_file_path.touch(exist_ok=True)
 
 LOGGING = {
     "version": 1,
@@ -373,34 +384,39 @@ LOGGING = {
             + "%(response_ms)d %(message)s %(request)s %(traceback)s %(error_msg)s",
         },
         "detailed": {"format": "[%(asctime)s] [%(levelname)s] - %(message)s", "datefmt": "%Y/%m/%d %H:%M:%S (%Z)"},
+        # tracing is used for some spark jobs' logs indirectly
+        "tracing": {
+            "format": "%(asctime)s.%(msecs)03dZ %(levelname)s %(name)s:%(lineno)s: %(message)s",
+            "datefmt": "%y/%m/%d %H:%M:%S",
+        },
     },
     "handlers": {
         "server": {
-            "level": "INFO",
+            "level": "DEBUG",
             "class": "logging.handlers.WatchedFileHandler",
             "filename": str(APP_DIR / "logs" / "server.log"),
             "formatter": "user_readable",
         },
         "console_file": {
-            "level": "INFO",
+            "level": "DEBUG",
             "class": "logging.handlers.WatchedFileHandler",
             "filename": str(APP_DIR / "logs" / "console.log"),
             "formatter": "specifics",
         },
-        "console": {"level": "INFO", "class": "logging.StreamHandler", "formatter": "simpletime"},
-        "script": {"level": "INFO", "class": "logging.StreamHandler", "formatter": "detailed"},
+        "console": {"level": "DEBUG", "class": "logging.StreamHandler", "formatter": "simpletime"},
+        "script": {"level": "DEBUG", "class": "logging.StreamHandler", "formatter": "detailed"},
     },
     "loggers": {
         # The root logger; i.e. "all modules"
         "": {"handlers": ["console", "console_file"], "level": "WARNING", "propagate": False},
         # The "root" logger for all usaspending_api modules
-        "usaspending_api": {"handlers": ["console", "console_file"], "level": "INFO", "propagate": False},
+        "usaspending_api": {"handlers": ["console", "console_file"], "level": "DEBUG", "propagate": False},
         # Logger for Django API requests via middleware. See logging.py
-        "server": {"handlers": ["server"], "level": "INFO", "propagate": False},
+        "server": {"handlers": ["server"], "level": "DEBUG", "propagate": False},
         # Catch-all logger (over)used for non-Django-API commands that output to the console
-        "console": {"handlers": ["console", "console_file"], "level": "INFO", "propagate": False},
+        "console": {"handlers": ["console", "console_file"], "level": "DEBUG", "propagate": False},
         # More-verbose logger for ETL scripts
-        "script": {"handlers": ["script"], "level": "INFO", "propagate": False},
+        "script": {"handlers": ["script"], "level": "DEBUG", "propagate": False},
         # Logger used to specifically record exceptions
         "exceptions": {"handlers": ["console", "console_file"], "level": "ERROR", "propagate": False},
     },

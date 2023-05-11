@@ -2,13 +2,14 @@ import pytest
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from model_mommy import mommy
+from model_bakery import baker
 from pathlib import Path
 from usaspending_api.accounts.models import TreasuryAppropriationAccount
-from usaspending_api.awards.models import Award, Subaward, TransactionFPDS, TransactionNormalized
+from usaspending_api.awards.models import Award, TransactionFPDS, TransactionNormalized
 from usaspending_api.references.management.commands.load_agencies import Command, Agency as AgencyTuple
 from usaspending_api.references.models import Agency, SubtierAgency, ToptierAgency
 from usaspending_api.references.models import CGAC, FREC
+from usaspending_api.search.models import SubawardSearch, TransactionSearch
 
 
 AGENCY_FILE = Path(__file__).resolve().parent / "data" / "test_load_agencies.csv"
@@ -195,7 +196,7 @@ def test_delete_agency(disable_vacuuming, monkeypatch):
 def test_update_treasury_appropriation_account(disable_vacuuming):
 
     # Create a bogus TAS.
-    mommy.make("accounts.TreasuryAppropriationAccount", agency_id="009")
+    baker.make("accounts.TreasuryAppropriationAccount", agency_id="009")
 
     # Load all the things.
     call_command("load_agencies", AGENCY_FILE)
@@ -231,12 +232,19 @@ def test_update_transactions_awards_subawards(disable_vacuuming):
     """ Test all three together since they're so tightly intertwined. """
 
     # Create some test data.
-    a = mommy.make("awards.Award", generated_unique_award_id="AWARD_1")
-    tn = mommy.make("awards.TransactionNormalized", award=a, unique_award_key="AWARD_1")
-    a.latest_transaction = tn
+    a = baker.make("search.AwardSearch", award_id=1, generated_unique_award_id="AWARD_1")
+    tn = baker.make(
+        "search.TransactionSearch",
+        transaction_id=1,
+        is_fpds=True,
+        award=a,
+        generated_unique_award_id="AWARD_1",
+        funding_agency_id="0901",
+        funding_sub_tier_agency_co="0901",
+    )
+    a.latest_transaction_id = tn.transaction_id
     a.save()
-    mommy.make("awards.TransactionFPDS", transaction=tn, funding_sub_tier_agency_co="0901", unique_award_key="AWARD_1")
-    mommy.make("awards.Subaward", award=a, unique_award_key="AWARD_1")
+    baker.make("search.SubawardSearch", award=a, unique_award_key="AWARD_1")
 
     # Load all the things.
     call_command("load_agencies", AGENCY_FILE)
@@ -245,10 +253,10 @@ def test_update_transactions_awards_subawards(disable_vacuuming):
     agency_id = Agency.objects.get(subtier_agency__subtier_code="0901").id
     assert TransactionNormalized.objects.first().funding_agency_id == agency_id
     assert Award.objects.first().funding_agency_id == agency_id
-    assert Subaward.objects.first().funding_agency_id == agency_id
+    assert SubawardSearch.objects.first().funding_agency_id == agency_id
 
     # Set it to something else and reload to make sure it gets updated.
-    TransactionFPDS.objects.update(funding_sub_tier_agency_co="0501")
+    TransactionSearch.objects.update(funding_sub_tier_agency_co="0501")
 
     # Double check.
     assert TransactionFPDS.objects.first().funding_sub_tier_agency_co == "0501"
@@ -265,7 +273,7 @@ def test_update_transactions_awards_subawards(disable_vacuuming):
     agency_id = Agency.objects.get(subtier_agency__subtier_code="0501").id
     assert TransactionNormalized.objects.first().funding_agency_id == agency_id
     assert Award.objects.first().funding_agency_id == agency_id
-    assert Subaward.objects.first().funding_agency_id == agency_id
+    assert SubawardSearch.objects.first().funding_agency_id == agency_id
 
 
 @pytest.mark.django_db

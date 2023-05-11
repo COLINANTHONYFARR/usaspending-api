@@ -62,6 +62,7 @@ SELECT
   "recipient_location_county_name",
   "recipient_location_county_population",
   "recipient_location_congressional_code",
+  "recipient_location_congressional_code_current",
   "recipient_location_congressional_population",
   "recipient_location_zip5",
   "recipient_location_city_name",
@@ -77,6 +78,7 @@ SELECT
   "pop_county_population",
   "pop_zip5",
   "pop_congressional_code",
+  "pop_congressional_code_current",
   "pop_congressional_population",
   "pop_city_name",
   "pop_city_code",
@@ -98,8 +100,13 @@ SELECT
   "tas_paths",
   "tas_components",
   "disaster_emergency_fund_codes",
-  "covid_spending_by_defc",
+  "covid_spending_by_defc"::JSON,
   "total_covid_outlay",
-  "total_covid_obligation"
+  "total_covid_obligation",
 
-FROM "vw_es_award_search";
+  "iija_spending_by_defc"::JSON,
+  "total_iija_outlay",
+  "total_iija_obligation"
+
+FROM "award_search"
+WHERE "action_date" >= '2007-10-01';

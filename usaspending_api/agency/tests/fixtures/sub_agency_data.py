@@ -1,15 +1,15 @@
 import pytest
 
-from model_mommy import mommy
+from model_bakery import baker
 
-from usaspending_api.awards.models import TransactionNormalized, TransactionFPDS, TransactionFABS
+from usaspending_api.search.models import TransactionSearch
 
 
 @pytest.fixture
 def sub_agency_data_1():
 
     # Submission
-    dsws = mommy.make(
+    dsws = baker.make(
         "submissions.DABSSubmissionWindowSchedule",
         submission_reveal_date="2021-04-09",
         submission_fiscal_year=2021,
@@ -19,193 +19,262 @@ def sub_agency_data_1():
         period_start_date="2021-03-01",
         period_end_date="2021-04-01",
     )
-    mommy.make("submissions.SubmissionAttributes", toptier_code="001", submission_window=dsws)
-    mommy.make("submissions.SubmissionAttributes", toptier_code="002", submission_window=dsws)
-    mommy.make("submissions.SubmissionAttributes", toptier_code="003", submission_window=dsws)
+    baker.make("submissions.SubmissionAttributes", toptier_code="001", submission_window=dsws)
+    baker.make("submissions.SubmissionAttributes", toptier_code="002", submission_window=dsws)
+    baker.make("submissions.SubmissionAttributes", toptier_code="003", submission_window=dsws)
 
     # Toptier and Awarding Agency
-    toptier_agency_1 = mommy.make("references.ToptierAgency", toptier_code="001", name="Agency 1")
-    toptier_agency_2 = mommy.make("references.ToptierAgency", toptier_code="002", name="Agency 2")
-    toptier_agency_3 = mommy.make("references.ToptierAgency", toptier_code="003", name="Agency 3")
-    subtier_agency_1 = mommy.make(
+    toptier_agency_1 = baker.make("references.ToptierAgency", toptier_code="001", name="Agency 1")
+    toptier_agency_2 = baker.make("references.ToptierAgency", toptier_code="002", name="Agency 2")
+    toptier_agency_3 = baker.make("references.ToptierAgency", toptier_code="003", name="Agency 3")
+    subtier_agency_1 = baker.make(
         "references.SubtierAgency",
         subtier_code="0001",
         name="Sub-Agency 1",
         abbreviation="A1",
     )
-    subtier_agency_2 = mommy.make(
+    subtier_agency_2 = baker.make(
         "references.SubtierAgency", subtier_code="0002", name="Sub-Agency 2", abbreviation="A2"
     )
-    subtier_agency_3 = mommy.make(
+    subtier_agency_3 = baker.make(
         "references.SubtierAgency", subtier_code="0003", name="Sub-Agency 3", abbreviation="A3"
     )
-    awarding_agency_1 = mommy.make(
+    awarding_agency_1 = baker.make(
         "references.Agency", toptier_agency=toptier_agency_1, subtier_agency=subtier_agency_1, toptier_flag=True
     )
-    awarding_agency_2 = mommy.make(
+    awarding_agency_2 = baker.make(
         "references.Agency", toptier_agency=toptier_agency_2, subtier_agency=subtier_agency_2, toptier_flag=True
     )
-    awarding_agency_3 = mommy.make(
+    awarding_agency_3 = baker.make(
         "references.Agency", toptier_agency=toptier_agency_3, subtier_agency=subtier_agency_3, toptier_flag=True
     )
-    mommy.make("references.Office", office_code="0001", office_name="Office 1")
-    mommy.make("references.Office", office_code="0002", office_name="Office 2")
+    baker.make("references.Office", office_code="0001", office_name="Office 1")
+    baker.make("references.Office", office_code="0002", office_name="Office 2")
 
     # Awards
-    award_contract = mommy.make(
-        "awards.Award",
+    award_contract = baker.make(
+        "search.AwardSearch",
+        award_id=1,
         category="contract",
         date_signed="2021-04-01",
     )
-    award_idv = mommy.make(
-        "awards.Award",
+    award_idv = baker.make(
+        "search.AwardSearch",
+        award_id=2,
         category="idv",
         date_signed="2020-04-01",
     )
-    award_grant = mommy.make(
-        "awards.Award",
+    award_grant = baker.make(
+        "search.AwardSearch",
+        award_id=3,
         category="grant",
         date_signed="2021-04-01",
     )
-    award_loan = mommy.make(
-        "awards.Award",
+    award_loan = baker.make(
+        "search.AwardSearch",
+        award_id=5,
         category="loans",
         date_signed="2021-04-01",
     )
-    award_dp = mommy.make(
-        "awards.Award",
+    award_dp = baker.make(
+        "search.AwardSearch",
+        award_id=6,
         category="direct payment",
         date_signed="2021-04-01",
     )
 
-    contract_transaction = mommy.make(
-        TransactionNormalized,
-        award=award_contract,
+    baker.make(
+        TransactionSearch,
+        transaction_id=1,
+        award_id=award_contract.award_id,
+        award_category="contract",
         federal_action_obligation=101,
+        generated_pragmatic_obligation=101,
         action_date="2021-04-01",
-        awarding_agency=awarding_agency_1,
-        funding_agency=awarding_agency_1,
+        fiscal_action_date="2021-07-01",
+        award_date_signed="2021-04-01",
+        awarding_agency_id=awarding_agency_1.id,
+        awarding_toptier_agency_id=awarding_agency_1.id,
+        funding_agency_id=awarding_agency_1.id,
+        funding_toptier_agency_id=awarding_agency_1.id,
         is_fpds=True,
         type="A",
-    )
-    mommy.make(
-        TransactionFPDS,
-        transaction=contract_transaction,
+        awarding_agency_code="001",
+        awarding_toptier_agency_name="Agency 1",
+        funding_agency_code="001",
+        funding_toptier_agency_name="Agency 1",
+        awarding_sub_tier_agency_c="0001",
+        awarding_subtier_agency_name="Sub-Agency 1",
+        awarding_subtier_agency_abbreviation="A1",
+        funding_sub_tier_agency_co="0001",
+        funding_subtier_agency_name="Sub-Agency 1",
+        funding_subtier_agency_abbreviation="A1",
         awarding_office_name="Office 1",
         awarding_office_code="0001",
         funding_office_name="Office 2",
         funding_office_code="0002",
     )
 
-    no_office_transaction = mommy.make(
-        TransactionNormalized,
-        award=award_contract,
+    baker.make(
+        TransactionSearch,
+        transaction_id=2,
+        award_id=award_contract.award_id,
+        award_category="contract",
         federal_action_obligation=110,
+        generated_pragmatic_obligation=110,
         action_date="2021-04-01",
-        awarding_agency=awarding_agency_3,
-        funding_agency=awarding_agency_3,
+        fiscal_action_date="2021-07-01",
+        award_date_signed="2021-04-01",
+        awarding_agency_id=awarding_agency_3.id,
+        awarding_toptier_agency_id=awarding_agency_3.id,
+        funding_agency_id=awarding_agency_3.id,
+        funding_toptier_agency_id=awarding_agency_3.id,
         is_fpds=True,
         type="B",
-    )
-    mommy.make(
-        TransactionFPDS,
-        transaction=no_office_transaction,
+        awarding_agency_code="003",
+        awarding_toptier_agency_name="Agency 3",
+        funding_agency_code="003",
+        funding_toptier_agency_name="Agency 3",
+        awarding_sub_tier_agency_c="0003",
+        awarding_subtier_agency_name="Sub-Agency 3",
+        awarding_subtier_agency_abbreviation="A3",
+        funding_sub_tier_agency_co="0003",
+        funding_subtier_agency_name="Sub-Agency 3",
+        funding_subtier_agency_abbreviation="A3",
         awarding_office_name=None,
         awarding_office_code=None,
         funding_office_name=None,
         funding_office_code=None,
     )
-
-    idv_transaction = mommy.make(
-        TransactionNormalized,
-        award=award_idv,
+    baker.make(
+        TransactionSearch,
+        transaction_id=3,
+        award_id=award_idv.award_id,
+        award_category="idv",
         federal_action_obligation=102,
+        generated_pragmatic_obligation=102,
         action_date="2021-04-01",
-        awarding_agency=awarding_agency_1,
+        fiscal_action_date="2021-07-01",
+        award_date_signed="2020-04-01",
+        awarding_agency_id=awarding_agency_1.id,
+        awarding_toptier_agency_id=awarding_agency_1.id,
         is_fpds=True,
         type="IDV_A",
-    )
-    mommy.make(
-        TransactionFPDS,
-        transaction=idv_transaction,
+        awarding_agency_code="001",
+        awarding_toptier_agency_name="Agency 1",
+        awarding_sub_tier_agency_c="0001",
+        awarding_subtier_agency_name="Sub-Agency 1",
+        awarding_subtier_agency_abbreviation="A1",
         awarding_office_name="Office 1",
         awarding_office_code="0001",
     )
-
-    grant_transaction = mommy.make(
-        TransactionNormalized,
-        award=award_grant,
+    baker.make(
+        TransactionSearch,
+        transaction_id=4,
+        award_id=award_grant.award_id,
+        award_category="grant",
         federal_action_obligation=103,
+        generated_pragmatic_obligation=103,
         action_date="2021-04-01",
-        awarding_agency=awarding_agency_1,
+        fiscal_action_date="2021-07-01",
+        award_date_signed="2021-04-01",
+        awarding_agency_id=awarding_agency_1.id,
+        awarding_toptier_agency_id=awarding_agency_1.id,
         is_fpds=False,
         type="04",
-    )
-    mommy.make(
-        TransactionFABS,
-        transaction=grant_transaction,
+        awarding_agency_code="001",
+        awarding_toptier_agency_name="Agency 1",
+        awarding_sub_tier_agency_c="0001",
+        awarding_subtier_agency_name="Sub-Agency 1",
+        awarding_subtier_agency_abbreviation="A1",
         awarding_office_name="Office 2",
         awarding_office_code="0002",
     )
-    loan_transaction = mommy.make(
-        TransactionNormalized,
-        award=award_loan,
+    baker.make(
+        TransactionSearch,
+        transaction_id=5,
+        award_id=award_loan.award_id,
+        award_category="loans",
         federal_action_obligation=104,
+        generated_pragmatic_obligation=104,
         action_date="2021-04-01",
-        awarding_agency=awarding_agency_1,
+        fiscal_action_date="2021-07-01",
+        award_date_signed="2021-04-01",
+        awarding_agency_id=awarding_agency_1.id,
+        awarding_toptier_agency_id=awarding_agency_1.id,
         is_fpds=False,
         type="09",
-    )
-    mommy.make(
-        TransactionFABS,
-        transaction=loan_transaction,
+        awarding_agency_code="001",
+        awarding_toptier_agency_name="Agency 1",
+        awarding_sub_tier_agency_c="0001",
+        awarding_subtier_agency_name="Sub-Agency 1",
+        awarding_subtier_agency_abbreviation="A1",
         awarding_office_name="Office 2",
         awarding_office_code="0002",
     )
-    directpayment_transaction = mommy.make(
-        TransactionNormalized,
-        award=award_dp,
+    baker.make(
+        TransactionSearch,
+        transaction_id=6,
+        award_id=award_dp.award_id,
+        award_category="direct payment",
         federal_action_obligation=105,
+        generated_pragmatic_obligation=105,
         action_date="2021-04-01",
-        awarding_agency=awarding_agency_1,
+        fiscal_action_date="2021-07-01",
+        award_date_signed="2021-04-01",
+        awarding_agency_id=awarding_agency_1.id,
+        awarding_toptier_agency_id=awarding_agency_1.id,
         is_fpds=False,
         type="10",
-    )
-    mommy.make(
-        TransactionFABS,
-        transaction=directpayment_transaction,
+        awarding_agency_code="001",
+        awarding_toptier_agency_name="Agency 1",
+        awarding_sub_tier_agency_c="0001",
+        awarding_subtier_agency_name="Sub-Agency 1",
+        awarding_subtier_agency_abbreviation="A1",
         awarding_office_name="Office 2",
         awarding_office_code="0002",
     )
-
     # Alternate Year
-    idv_2 = mommy.make(
-        TransactionNormalized,
-        award=award_idv,
+    baker.make(
+        TransactionSearch,
+        transaction_id=7,
+        award_id=award_idv.award_id,
+        award_category="direct payment",
         federal_action_obligation=300,
+        generated_pragmatic_obligation=300,
         action_date="2020-04-01",
-        awarding_agency=awarding_agency_1,
+        fiscal_action_date="2020-07-01",
+        award_date_signed="2020-04-01",
+        awarding_agency_id=awarding_agency_1.id,
+        awarding_toptier_agency_id=awarding_agency_1.id,
         is_fpds=True,
-    )
-    mommy.make(
-        TransactionFPDS,
-        transaction=idv_2,
+        awarding_agency_code="001",
+        awarding_toptier_agency_name="Agency 1",
+        awarding_sub_tier_agency_c="0001",
+        awarding_subtier_agency_name="Sub-Agency 1",
+        awarding_subtier_agency_abbreviation="A1",
         awarding_office_name="Office 1",
         awarding_office_code="0001",
     )
-
     # Alternate Agency
-    idv_3 = mommy.make(
-        TransactionNormalized,
-        award=award_idv,
+    baker.make(
+        TransactionSearch,
+        transaction_id=8,
+        award_id=award_idv.award_id,
+        award_category="idv",
         federal_action_obligation=400,
+        generated_pragmatic_obligation=400,
         action_date="2021-04-01",
-        awarding_agency=awarding_agency_2,
+        fiscal_action_date="2021-07-01",
+        award_date_signed="2020-04-01",
+        awarding_agency_id=awarding_agency_2.id,
+        awarding_toptier_agency_id=awarding_agency_2.id,
         is_fpds=True,
-    )
-    mommy.make(
-        TransactionFPDS,
-        transaction=idv_3,
+        awarding_agency_code="002",
+        awarding_toptier_agency_name="Agency 2",
+        awarding_sub_tier_agency_c="0002",
+        awarding_subtier_agency_name="Sub-Agency 2",
+        awarding_subtier_agency_abbreviation="A2",
         awarding_office_name="Office 2",
         awarding_office_code="0002",
     )
